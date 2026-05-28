@@ -1881,6 +1881,56 @@ textarea.fld{resize:vertical;line-height:1.5}
 .ped-store-ic.c5{background:linear-gradient(135deg, rgba(249,115,22,.25),rgba(249,115,22,.05));color:#fdba74;border-color:rgba(249,115,22,.3)}
 .ped-store-ic.c6{background:linear-gradient(135deg, rgba(96,165,250,.25),rgba(96,165,250,.05));color:#93c5fd;border-color:rgba(96,165,250,.3)}
 
+/* BOARD 3 COLUNAS — Aprovar / Aprovados / Entregues (Diretoria) */
+.board-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px}
+@media(max-width:1100px){.board-3{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){.board-3{grid-template-columns:1fr}}
+.board-col{
+  position:relative;
+  background:linear-gradient(180deg, rgba(22,28,52,.5), rgba(13,17,32,.5));
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:16px;
+  padding:16px 14px 14px;
+  min-height:200px;
+  display:flex;flex-direction:column;
+}
+.board-col::before{
+  content:'';position:absolute;top:0;left:18px;right:18px;height:2px;
+  border-radius:0 0 2px 2px;
+}
+.board-red::before{background:linear-gradient(90deg, transparent, #ef4444, transparent)}
+.board-blue::before{background:linear-gradient(90deg, transparent, #7eb3f0, transparent)}
+.board-green::before{background:linear-gradient(90deg, transparent, #34d399, transparent)}
+.board-col > header{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:0 4px 6px;
+}
+.board-col .bh-title{display:flex;align-items:center;gap:9px;font-family:'Outfit';font-size:15px;font-weight:600;color:#fff;letter-spacing:-.01em}
+.board-col .bh-title svg{width:16px;height:16px}
+.board-red .bh-title svg{color:#fca5a5}
+.board-blue .bh-title svg{color:#7eb3f0}
+.board-green .bh-title svg{color:#86efac}
+.board-col .bh-count{
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+  padding:3px 10px;border-radius:99px;
+  background:rgba(255,255,255,.05);border:1px solid var(--border);color:#fff;min-width:30px;text-align:center;
+}
+.board-red .bh-count{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.3);color:#fca5a5}
+.board-blue .bh-count{background:rgba(46,116,201,.16);border-color:rgba(46,116,201,.3);color:#93c5fd}
+.board-green .bh-count{background:rgba(52,211,153,.16);border-color:rgba(52,211,153,.3);color:#86efac}
+.board-col .bh-sub{font-size:11.5px;color:var(--ink-300);padding:0 4px 14px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.board-col .board-list{display:flex;flex-direction:column;gap:12px;flex:1}
+.board-col .board-empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  padding:40px 16px;color:var(--ink-400);font-size:12.5px;font-style:italic;
+  border:1px dashed rgba(255,255,255,.05);border-radius:12px;
+}
+.board-col .board-empty svg{width:28px;height:28px;color:var(--ink-500)}
+
+/* Card mais compacto no board */
+.board-col .ped-v2{font-size:12.5px}
+.board-col .ped-v2 .ped-itens-v2{max-height:120px}
+
 /* AI Compact card */
 .ai-summary{
   display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;
@@ -4729,18 +4779,11 @@ function renderPedidoCardV2(p, opts={}){
   // Quick actions diferentes por modo e papel
   let quickActions = '';
   if (modo === 'gestao' && p.status === 'Pendente') {
-    quickActions = `
-      <button class="qbtn go" onclick="aprovarRapido('${p.id}')" title="Aprovar pedido"><i data-lucide="check"></i>Aprovar</button>
-      <button class="qbtn info" onclick="marcarEmCompra('${p.id}')" title="Marcar em compra"><i data-lucide="shopping-cart"></i>Em compra</button>
-      <button class="qbtn no" onclick="rejeitarPedido('${p.id}')" title="Rejeitar"><i data-lucide="x"></i></button>
-    `;
-  } else if (modo === 'gestao' && p.status === 'Aprovado') {
-    quickActions = `
-      <button class="qbtn info" onclick="marcarEmCompra('${p.id}')"><i data-lucide="shopping-cart"></i>Em compra</button>
-      <button class="qbtn go" onclick="marcarEntregue('${p.id}')"><i data-lucide="package-check"></i>Entregar</button>
-    `;
-  } else if (modo === 'gestao' && p.status === 'Em compra') {
-    quickActions = `<button class="qbtn go" onclick="marcarEntregue('${p.id}')"><i data-lucide="package-check"></i>Marcar como entregue</button>`;
+    quickActions = `<button class="qbtn go" onclick="aprovarRapido('${p.id}')"><i data-lucide="check"></i>Aprovar</button>`;
+  } else if (modo === 'gestao' && (p.status === 'Aprovado' || p.status === 'Em compra')) {
+    quickActions = `<button class="qbtn go" onclick="marcarEntregue('${p.id}')"><i data-lucide="package-check"></i>Marcar entregue</button>`;
+  } else if (modo === 'gestao' && p.status === 'Entregue') {
+    quickActions = `<button class="qbtn" onclick="reverterParaAprovado('${p.id}')" title="Voltar para Aprovados"><i data-lucide="undo-2"></i>Reverter</button>`;
   } else if (modo === 'colab' && podeEditar && p.status === 'Pendente') {
     quickActions = `
       <button class="qbtn" onclick="abrirNovoPedido('${p.id}')"><i data-lucide="edit-3"></i>Editar</button>
@@ -4748,8 +4791,7 @@ function renderPedidoCardV2(p, opts={}){
     `;
   }
   if (modo === 'gestao') {
-    quickActions += `<button class="qbtn" onclick="responderPedido('${p.id}')"><i data-lucide="message-square-reply"></i>Responder</button>`;
-    quickActions += `<button class="qbtn" onclick="abrirDetalhePedido('${p.id}')"><i data-lucide="eye"></i></button>`;
+    quickActions += `<button class="qbtn" onclick="abrirDetalhePedido('${p.id}')" title="Detalhes"><i data-lucide="eye"></i></button>`;
   }
 
   return `<div class="ped-v2 ${statusCls}">
@@ -5066,6 +5108,7 @@ async function rejeitarPedido(id){
 }
 async function marcarEmCompra(id){ await mudarStatusPedidoLocal(id, 'Em compra'); }
 async function marcarEntregue(id){ await mudarStatusPedidoLocal(id, 'Entregue'); }
+async function reverterParaAprovado(id){ await mudarStatusPedidoLocal(id, 'Aprovado'); }
 async function mudarStatusPedidoLocal(id, novo){
   const p = state.pedidos.find(x=>x.id===id); if (!p || p.status===novo) return;
   const antigo = p.status;
@@ -5154,99 +5197,77 @@ async function trocarLojaColab() {
 /* ----------------------------------------------------------------
    GESTÃO — Pedidos das lojas
    ---------------------------------------------------------------- */
-function renderPedidosColab() {
+async function renderPedidosColab() {
+  // Auto-arquiva pedidos entregues há mais de 20 dias
+  await arquivarEntreguesAntigos();
+
   const c = document.getElementById('content');
   const all = [...state.pedidos];
-  // ordena: vencidos > críticos > altos > pendentes > demais
-  all.sort((a,b) => {
-    const sa = calcularSLA(a), sb = calcularSLA(b);
-    if (sa?.vencido && !sb?.vencido) return -1;
-    if (sb?.vencido && !sa?.vencido) return 1;
-    const pa = PRIORIDADES.findIndex(p=>p.key===(a.prioridade||'Médio'));
-    const pb = PRIORIDADES.findIndex(p=>p.key===(b.prioridade||'Médio'));
-    if (a.status === 'Pendente' && b.status !== 'Pendente') return -1;
-    if (b.status === 'Pendente' && a.status !== 'Pendente') return 1;
-    if (pa !== pb) return pa - pb;
-    return new Date(b.criadoEm) - new Date(a.criadoEm);
-  });
 
-  state._filtroPed = state._filtroPed || { loja:'all', status:'all', prio:'all', cat:'all', view:'cards' };
-  const f = state._filtroPed;
-  let filtrados = all;
-  if (f.loja !== 'all') filtrados = filtrados.filter(p => p.lojaId === f.loja);
-  if (f.status !== 'all') filtrados = filtrados.filter(p => p.status === f.status);
-  if (f.prio !== 'all') filtrados = filtrados.filter(p => (p.prioridade||'Médio') === f.prio);
-  if (f.cat !== 'all') filtrados = filtrados.filter(p => (p.categoria||detectarCategoria(p.itens,p.observacao)) === f.cat);
+  // 3 grupos visíveis: Aprovar / Aprovados / Entregues
+  const aprovar  = all.filter(p => p.status === 'Pendente');
+  const aprovados = all.filter(p => p.status === 'Aprovado' || p.status === 'Em compra');
+  const entregues = all.filter(p => p.status === 'Entregue');
 
-  const pend = all.filter(p => p.status === 'Pendente').length;
-  const apro = all.filter(p => p.status === 'Aprovado').length;
-  const comp = all.filter(p => p.status === 'Em compra').length;
-  const entr = all.filter(p => p.status === 'Entregue').length;
-  const rej  = all.filter(p => p.status === 'Rejeitado').length;
-  const urg  = all.filter(p => p.status==='Pendente' && (p.prioridade==='Crítico' || (calcularSLA(p)?.vencido))).length;
+  // ordena cada coluna por mais recente
+  const ordenar = arr => arr.sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
+  ordenar(aprovar); ordenar(aprovados); ordenar(entregues);
 
   c.innerHTML = `
     <div class="page-header">
       <div>
         <h1 class="page-title">Pedidos das lojas</h1>
-        <p class="page-sub">${all.length} pedido(s) · ${pend} aguardando · <span style="color:#fca5a5">${urg} urgente${urg!==1?'s':''}</span></p>
+        <p class="page-sub">${aprovar.length} aguardando · ${aprovados.length} aprovado(s) · ${entregues.length} entregue(s) · pedidos entregues somem após 20 dias</p>
       </div>
       <div class="page-actions">
-        <button class="btn" onclick="state._filtroPed.view='${f.view==='cards'?'kanban':'cards'}';renderPedidosColab();"><i data-lucide="${f.view==='cards'?'layout-grid':'layout-list'}"></i>${f.view==='cards'?'Kanban':'Cards'}</button>
         <button class="btn" onclick="exportPedidosXLSX()"><i data-lucide="file-spreadsheet"></i>Exportar</button>
       </div>
     </div>
 
-    <div class="metric-row">
-      <div class="metric tone-orange ${urg>0?'alert':''}" onclick="filtrarPed('prio','Crítico')">
-        <div class="m-head"><span class="m-label">Urgentes / Vencidos</span><div class="m-ic"><i data-lucide="flame"></i></div></div>
-        <div class="m-val">${urg}</div>
-        <div class="m-sub"><i data-lucide="zap"></i>SLA crítico ou estourado</div>
-      </div>
-      <div class="metric tone-gold" onclick="filtrarPed('status','Pendente')">
-        <div class="m-head"><span class="m-label">Pendentes</span><div class="m-ic"><i data-lucide="clock"></i></div></div>
-        <div class="m-val">${pend}</div>
-        <div class="m-sub">aguardando ação</div>
-      </div>
-      <div class="metric tone-blue" onclick="filtrarPed('status','Em compra')">
-        <div class="m-head"><span class="m-label">Em processo</span><div class="m-ic"><i data-lucide="loader"></i></div></div>
-        <div class="m-val">${apro + comp}</div>
-        <div class="m-sub">${apro} aprovado · ${comp} comprando</div>
-      </div>
-      <div class="metric tone-green" onclick="filtrarPed('status','Entregue')">
-        <div class="m-head"><span class="m-label">Entregues</span><div class="m-ic"><i data-lucide="package-check"></i></div></div>
-        <div class="m-val">${entr}</div>
-        <div class="m-sub">finalizados</div>
-      </div>
+    <div class="board-3">
+      ${renderBoardCol({ titulo:'Aprovar',   sub:'Aguardando sua aprovação',  cor:'red',   icone:'clock',         lista: aprovar })}
+      ${renderBoardCol({ titulo:'Aprovados', sub:'Aprovados / em compra',     cor:'blue',  icone:'check-circle',  lista: aprovados })}
+      ${renderBoardCol({ titulo:'Entregues', sub:'Concluídos (somem em 20 dias)', cor:'green', icone:'package-check', lista: entregues })}
     </div>
-
-    <div class="filter-strip">
-      <span class="fpill ${f.status==='all'?'active':''}" onclick="filtrarPed('status','all')">Todos <span class="ct">${all.length}</span></span>
-      <span class="fpill ${f.status==='Pendente'?'active':''}" onclick="filtrarPed('status','Pendente')">Pendentes <span class="ct">${pend}</span></span>
-      <span class="fpill ${f.status==='Aprovado'?'active':''}" onclick="filtrarPed('status','Aprovado')">Aprovados <span class="ct">${apro}</span></span>
-      <span class="fpill ${f.status==='Em compra'?'active':''}" onclick="filtrarPed('status','Em compra')">Em compra <span class="ct">${comp}</span></span>
-      <span class="fpill ${f.status==='Entregue'?'active':''}" onclick="filtrarPed('status','Entregue')">Entregues <span class="ct">${entr}</span></span>
-      <span class="fpill ${f.status==='Rejeitado'?'active':''}" onclick="filtrarPed('status','Rejeitado')">Rejeitados <span class="ct">${rej}</span></span>
-      <span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span>
-      <select onchange="filtrarPed('loja',this.value)" class="fpill" style="cursor:pointer;font-family:inherit">
-        <option value="all">Todas as lojas</option>
-        ${state.lojas.map(l=>`<option value="${l.id}" ${f.loja===l.id?'selected':''}>${escapeHtml(l.nome)}</option>`).join('')}
-      </select>
-      <select onchange="filtrarPed('prio',this.value)" class="fpill" style="cursor:pointer;font-family:inherit">
-        <option value="all">Todas prioridades</option>
-        ${PRIORIDADES.map(p=>`<option value="${p.key}" ${f.prio===p.key?'selected':''}>${p.key}</option>`).join('')}
-      </select>
-      <select onchange="filtrarPed('cat',this.value)" class="fpill" style="cursor:pointer;font-family:inherit">
-        <option value="all">Todas categorias</option>
-        ${CATEGORIAS.map(ca=>`<option value="${ca.key}" ${f.cat===ca.key?'selected':''}>${ca.key}</option>`).join('')}
-      </select>
-    </div>
-
-    ${f.view==='kanban' ? renderPedidosKanban(filtrados) : `
-      ${filtrados.length ? `<div class="ped-grid">${filtrados.map(p=>renderPedidoCardV2(p, {modo:'gestao'})).join('')}</div>`
-        : '<div class="panel"><div class="empty-state"><i data-lucide="inbox"></i><h3>Nenhum pedido encontrado</h3><p>Tente ajustar os filtros.</p></div></div>'}
-    `}
   `;
+}
+
+function renderBoardCol({ titulo, sub, cor, icone, lista }){
+  return `<section class="board-col board-${cor}">
+    <header>
+      <div class="bh-title"><i data-lucide="${icone}"></i><span>${escapeHtml(titulo)}</span></div>
+      <span class="bh-count">${lista.length}</span>
+    </header>
+    <div class="bh-sub">${escapeHtml(sub)}</div>
+    <div class="board-list">
+      ${lista.length
+        ? lista.map(p => renderPedidoCardV2(p, {modo:'gestao'})).join('')
+        : '<div class="board-empty"><i data-lucide="inbox"></i><span>Sem pedidos aqui</span></div>'}
+    </div>
+  </section>`;
+}
+
+/* Move pedidos entregues há mais de 20 dias para arquivo. */
+async function arquivarEntreguesAntigos(){
+  const limite = Date.now() - 20*86400*1000;
+  const arquivar = [];
+  const restantes = [];
+  for (const p of state.pedidos) {
+    if (p.status === 'Entregue') {
+      // pega a data da última mudança pra 'Entregue' OU criadoEm como fallback
+      const movEntregue = (p.historico||[]).slice().reverse().find(h => (h.action||'').includes('→ Entregue'));
+      const refDate = movEntregue ? new Date(movEntregue.at).getTime() : new Date(p.criadoEm).getTime();
+      if (refDate < limite) { arquivar.push(p); continue; }
+    }
+    restantes.push(p);
+  }
+  if (!arquivar.length) return;
+  const arquivo = await Storage.get('solys:pedidos:arquivo', []);
+  arquivo.unshift(...arquivar);
+  await Storage.set('solys:pedidos:arquivo', arquivo);
+  state.pedidos = restantes;
+  await Storage.set('solys:pedidos', state.pedidos);
+  await pushLog('pedido-arq', `${arquivar.length} pedido(s) entregue há mais de 20 dias foram arquivados automaticamente`);
 }
 
 function renderPedidosKanban(items){
