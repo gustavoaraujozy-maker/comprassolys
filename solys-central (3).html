@@ -2844,6 +2844,135 @@ canvas{filter:none !important}
 /* Hidden helpers */
 body{overflow:hidden}
 
+/* ============================================================
+   FIX VISIBILIDADE — força textos escuros em todo lugar
+   ============================================================ */
+
+/* Select options — sempre visíveis no dropdown */
+select option,
+.field select option,
+.login-card .select-wrap select option,
+.filter-pill select option,
+.modal-body select option{
+  background:#FFFFFF !important;
+  color:#0A0F1A !important;
+  padding:8px 10px !important;
+  font-weight:500 !important;
+}
+select option:hover, select option:checked, select option:focus{
+  background:#E5EAF2 !important;
+  color:#0A0F1A !important;
+}
+
+/* Texto principal — preto escuro */
+body, p, span, div, td, th, li, button{color:#1F2937}
+
+/* Inputs / selects / textareas — texto preto escuro */
+input, select, textarea,
+.field input, .field select, .field textarea,
+.modal-body input, .modal-body select, .modal-body textarea,
+.login-card .select-wrap select, .login-card .select-wrap input,
+.search-global input, .search-mini input,
+.cell-input, .fld, .ll-input{
+  color:#0A0F1A !important;
+}
+input::placeholder, textarea::placeholder{color:#6B7280 !important;opacity:1 !important}
+
+/* Títulos */
+.page-title, .panel-title, .login-title, .modal-title,
+.ac-nome, .loja-name, .ped-store-name, .pd-info h3,
+.year-title h3, .md-title, .kpi-value, .m-val{
+  color:#0A0F1A !important;
+}
+
+/* Subtítulos / secundários — cinza-chumbo legível */
+.page-sub, .panel-sub, .login-sub, .ac-local, .loja-local,
+.ped-store-loc, .pd-info p, .year-sub, .md-sub,
+.kpi-label, .kpi-trend, .m-label, .m-sub,
+.activity-text, .activity-meta, .tl-title, .tl-meta{
+  color:#374151 !important;
+}
+
+.tl-title strong, .activity-text strong{color:#0A0F1A !important}
+
+/* Cells em tabelas */
+.cell-strong, td.cell-strong{color:#0A0F1A !important;font-weight:600 !important}
+.cell-mute, td.cell-mute{color:#4B5563 !important}
+table.data thead th{color:#374151 !important;font-weight:700 !important}
+table.data tbody td{color:#1F2937 !important}
+
+/* Itens do pedido */
+.ped-li, .ped-li span, .pedido-item-line, .ref-desc, .pd-it-desc,
+.colab-item-head strong, .colab-item-desc{
+  color:#0A0F1A !important;
+}
+
+/* Labels de campos */
+.field label, .login-card .field label, .fld-label,
+.modal-body label, .ac-lbl, .pd-meta-cell .lbl,
+.pd-section-h, .ped-products-h, .pedido-data, .pedido-loja-nome,
+.eg-th{
+  color:#4B5563 !important;
+}
+
+/* Status / chips devem ter cores próprias (não sobrescrever) */
+.status, .status-pill, .status-badge, .chip, .prio, .cat-tag,
+.sla, .fpill, .qq, .ref-qtd, .pedido-item-qtd, .pd-it-qtd,
+.urg-pill, .qtd-pill, .ac-status, .yr-badge{
+  /* preserva cores específicas já definidas */
+}
+
+/* Botões */
+.btn{color:#1F2937 !important}
+.btn:hover{color:#0A3D7C !important}
+.btn.gold, .btn-primary, .qbtn.go, .qbtn.gold,
+.ll-btn, .pagination button.active{
+  color:#fff !important;
+}
+/* Botões de ações com fundo dourado/azul mantêm contraste branco */
+.btn.gold *, .btn-primary *, .qbtn.go *, .qbtn.gold *{color:#fff !important}
+
+/* Nav items */
+.nav-item, .nav-item span{color:#374151 !important}
+.nav-item.active, .nav-item.active span{color:#0A3D7C !important;font-weight:600 !important}
+.nav-label{color:#4B5563 !important;font-weight:700 !important}
+.brand-name{color:#0A3D7C !important;font-weight:700 !important}
+.brand-tag, .brand-sub-tag{color:#A47E2C !important;font-weight:700 !important}
+
+/* User chip */
+.user-info .name{color:#0A0F1A !important;font-weight:600 !important}
+.user-info .role{color:#4B5563 !important}
+
+/* Empty states */
+.empty-state h3{color:#0A0F1A !important;font-weight:700 !important}
+.empty-state, .empty-state p{color:#4B5563 !important}
+
+/* Notif / modal / toast titles */
+.toast-title{color:#0A0F1A !important;font-weight:600 !important}
+.toast-desc{color:#4B5563 !important}
+.notif-pop > header h4{color:#0A0F1A !important}
+.notif-text{color:#1F2937 !important}
+.notif-text .nt-time{color:#6B7280 !important}
+
+/* Resposta da diretoria — caixinha azul */
+.pedido-resposta, .pd-resp{color:#1F2937 !important}
+.pedido-resposta strong, .pd-resp b{color:#0A3D7C !important}
+
+/* Observação */
+.pedido-obs, .ped-obs-v2, .pd-obs{color:#374151 !important}
+
+/* Footer / muted */
+.muted, .pedido-foot, .ped-foot, .footer{color:#6B7280 !important}
+
+/* Garante input numérico/data legível */
+input[type=number], input[type=date], input[type=text],
+input[type=password], input[type=email], input[type=search]{
+  color:#0A0F1A !important;
+}
+
+/* Logo na sidebar e login mantém legibilidade */
+.brand-side-img, .brand-logo-img{filter:drop-shadow(0 4px 12px rgba(10,61,124,.15))}
+
 </style>
 </head>
 <body>
