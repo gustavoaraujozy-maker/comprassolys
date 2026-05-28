@@ -19,6 +19,7 @@ import { Loja } from 'data/types';
 import { useSession } from 'providers/SessionProvider';
 import { supabase } from 'data/supabase';
 import paths from 'routes/path';
+import solysLogo from 'assets/solys-logo.png';
 
 const SENHA_DIRETORIA = 'Solys@2027#k';
 
@@ -135,7 +136,7 @@ const LoginPage = () => {
           <Stack alignItems="center" spacing={1} sx={{ mb: 4 }}>
             <Box
               component="img"
-              src="./solys-logo.png"
+              src={solysLogo}
               alt="SOLYS"
               sx={{ width: 180, height: 'auto', filter: 'drop-shadow(0 6px 18px rgba(0,0,0,.18))' }}
             />

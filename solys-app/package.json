@@ -26,7 +26,8 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.23.1",
     "simplebar-react": "^3.2.6",
-    "swiper": "^11.1.4"
+    "swiper": "^11.1.4",
+    "vite-plugin-singlefile": "^2.3.3"
   },
   "devDependencies": {
     "@iconify/react": "^5.0.1",

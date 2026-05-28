@@ -7,6 +7,7 @@ import SearchInput from 'layouts/main-layout/appbar/SearchInput';
 import SettingsDropdown from 'layouts/main-layout/appbar/SettingsDropdown';
 import { MouseEvent, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import solysLogo from 'assets/solys-logo.png';
 interface NavbarProps {
   onDrawerToggle: () => void;
 }
@@ -52,7 +53,7 @@ const MainNavbar = ({ onDrawerToggle }: NavbarProps) => {
           </Typography>
           <Stack direction="row" gap={1} sx={{ display: { xs: 'flex', md: 'none' } }}>
             <Link href="/" sx={{ display: 'flex', p: 0.5 }}>
-              <Image src="/bankdash/bankdash.svg" alt="Logo" sx={{ width: 25 }} />
+              <Image src={solysLogo} alt="Logo" sx={{ width: 28 }} />
             </Link>
             <IconButton onClick={onDrawerToggle} sx={{ display: { md: 'none' } }}>
               <IconifyIcon icon="mingcute:menu-line" color="primary.darker" width={25} />
