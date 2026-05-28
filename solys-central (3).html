@@ -12,6 +12,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.7.0/jspdf.plugin.autotable.min.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 /* ============================================================
@@ -2102,30 +2103,157 @@ textarea.fld{resize:vertical;line-height:1.5}
 const Storage = {
   async get(key, def = null) {
     try {
-      const r = await window.storage.get(key);
-      return r && r.value ? JSON.parse(r.value) : def;
-    } catch (e) {
-      return def;
-    }
+      // window.storage no host; fallback pra localStorage no browser comum
+      if (window.storage?.get) {
+        const r = await window.storage.get(key);
+        return r && r.value ? JSON.parse(r.value) : def;
+      }
+      const v = localStorage.getItem(key);
+      return v ? JSON.parse(v) : def;
+    } catch (e) { return def; }
   },
   async set(key, value) {
     try {
-      await window.storage.set(key, JSON.stringify(value));
+      if (window.storage?.set) { await window.storage.set(key, JSON.stringify(value)); return true; }
+      localStorage.setItem(key, JSON.stringify(value));
       return true;
-    } catch (e) {
-      console.error('Storage set error', key, e);
-      return false;
-    }
+    } catch (e) { console.error('Storage set error', key, e); return false; }
   },
   async del(key) {
-    try { await window.storage.delete(key); } catch (e) {}
-  },
-  async list(prefix = '') {
     try {
-      const r = await window.storage.list(prefix);
-      return r ? r.keys || [] : [];
-    } catch (e) { return []; }
-  }
+      if (window.storage?.delete) await window.storage.delete(key);
+      else localStorage.removeItem(key);
+    } catch (e) {}
+  },
+};
+
+/* ----------------------------------------------------------------
+   SUPABASE — banco central (realtime entre loja e diretoria)
+   ---------------------------------------------------------------- */
+const SUPA_URL = 'https://rmczoqutcuvrlvlmfxze.supabase.co';
+const SUPA_KEY = 'sb_publishable_mK9kyeWeOiYAc7lMBFiu4A_e3pwEaLT';
+let supa = null;
+function initSupa() {
+  if (!window.supabase) return null;
+  if (!supa) supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, { realtime: { params: { eventsPerSecond: 10 } } });
+  return supa;
+}
+
+const Cloud = {
+  ok() { return !!initSupa(); },
+
+  _mapLoja(l) {
+    return {
+      id: l.id, codigo: l.codigo, nome: l.nome, localidade: l.localidade,
+      criadoEm: l.criado_em,
+      itens: (l.loja_itens || []).map(it => ({
+        id: it.id, descricao: it.descricao,
+        jan: it.jan|0, fev: it.fev|0, mar: it.mar|0, abr: it.abr|0,
+        mai: it.mai|0, jun: it.jun|0, jul: it.jul|0, ago: it.ago|0,
+        set: it.set|0, out: it.out|0, nov: it.nov|0, dez: it.dez|0,
+        obs: it.obs||'', criadoEm: it.criado_em, historico: [],
+      }))
+    };
+  },
+  _mapPedido(p) {
+    return {
+      id: p.id, lojaId: p.loja_id, lojaNome: p.loja_nome, lojaLocal: p.loja_local,
+      data: p.data, solicitante: p.solicitante, observacao: p.observacao,
+      anexos: p.anexos || [], itens: p.itens || [], historico: p.historico || [],
+      status: p.status, respondidoPor: p.respondido_por || '', respostaAdmin: p.resposta_admin || '',
+      criadoEm: p.criado_em,
+    };
+  },
+
+  async loadLojas() {
+    if (!this.ok()) return null;
+    const { data, error } = await supa.from('lojas').select('*, loja_itens(*)').order('nome');
+    if (error) { console.warn('Cloud.loadLojas', error); return null; }
+    return data.map(this._mapLoja);
+  },
+  async loadPedidos() {
+    if (!this.ok()) return null;
+    const { data, error } = await supa.from('pedidos').select('*').neq('status','Arquivado').order('criado_em', { ascending: false });
+    if (error) { console.warn('Cloud.loadPedidos', error); return null; }
+    return data.map(this._mapPedido);
+  },
+
+  async insertPedido(p) {
+    if (!this.ok()) return null;
+    const { data, error } = await supa.from('pedidos').insert({
+      loja_id: p.lojaId, loja_nome: p.lojaNome, loja_local: p.lojaLocal,
+      data: p.data, solicitante: p.solicitante, observacao: p.observacao,
+      anexos: p.anexos || [], itens: p.itens || [], historico: p.historico || [],
+      status: p.status || 'Pendente',
+    }).select().single();
+    if (error) { toast('Erro ao enviar pedido', error.message, 'error'); return null; }
+    return this._mapPedido(data);
+  },
+  async updatePedido(id, patch) {
+    if (!this.ok()) return false;
+    const row = {};
+    const map = { status:'status', respondidoPor:'respondido_por', respostaAdmin:'resposta_admin',
+                  historico:'historico', itens:'itens', observacao:'observacao',
+                  solicitante:'solicitante', data:'data', anexos:'anexos' };
+    Object.keys(patch).forEach(k => { if (map[k]) row[map[k]] = patch[k]; });
+    const { error } = await supa.from('pedidos').update(row).eq('id', id);
+    if (error) { toast('Erro ao atualizar', error.message, 'error'); return false; }
+    return true;
+  },
+  async deletePedido(id) {
+    if (!this.ok()) return false;
+    const { error } = await supa.from('pedidos').delete().eq('id', id);
+    if (error) { toast('Erro ao excluir', error.message, 'error'); return false; }
+    return true;
+  },
+
+  async upsertLojaItem(lojaId, item) {
+    if (!this.ok()) return false;
+    const row = {
+      loja_id: lojaId, descricao: (item.descricao||'').toUpperCase().trim(),
+      jan: item.jan|0, fev: item.fev|0, mar: item.mar|0, abr: item.abr|0,
+      mai: item.mai|0, jun: item.jun|0, jul: item.jul|0, ago: item.ago|0,
+      set: item.set|0, out: item.out|0, nov: item.nov|0, dez: item.dez|0,
+      obs: item.obs || '',
+    };
+    const { error } = await supa.from('loja_itens').upsert(row, { onConflict:'loja_id,descricao' });
+    if (error) { console.warn('Cloud.upsertLojaItem', error); return false; }
+    return true;
+  },
+  async incLojaItemMes(lojaId, descricao, mesKey, delta) {
+    // SOMA na grade mensal — busca, soma, salva
+    if (!this.ok()) return false;
+    const desc = (descricao||'').toUpperCase().trim();
+    const { data: existing } = await supa.from('loja_itens')
+      .select('*').eq('loja_id', lojaId).eq('descricao', desc).maybeSingle();
+    if (existing) {
+      const novo = (existing[mesKey]|0) + (delta|0);
+      const { error } = await supa.from('loja_itens').update({ [mesKey]: novo }).eq('id', existing.id);
+      if (error) { console.warn('inc update', error); return false; }
+    } else {
+      const row = { loja_id: lojaId, descricao: desc, [mesKey]: delta|0 };
+      const { error } = await supa.from('loja_itens').insert(row);
+      if (error) { console.warn('inc insert', error); return false; }
+    }
+    return true;
+  },
+
+  _chans: [],
+  subscribe(onPedidoChange, onLojaItemChange) {
+    if (!this.ok()) return;
+    this.unsubscribe();
+    const c1 = supa.channel('rt-pedidos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, onPedidoChange)
+      .subscribe();
+    const c2 = supa.channel('rt-loja-itens')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'loja_itens' }, onLojaItemChange)
+      .subscribe();
+    this._chans = [c1, c2];
+  },
+  unsubscribe() {
+    this._chans.forEach(c => { try { supa.removeChannel(c); } catch(e){} });
+    this._chans = [];
+  },
 };
 
 /* ----------------------------------------------------------------
@@ -2467,57 +2595,12 @@ async function onClickNotif(id){
 async function markAllRead(){ await NotifCenter.markAllRead(); }
 
 /* ----------------------------------------------------------------
-   v2 · REAL-TIME (polling leve sobre window.storage compartilhado)
+   v2 · REAL-TIME (Supabase subscriptions — substitui o polling)
    ---------------------------------------------------------------- */
-let _lastPedidosHash = '';
-let _liveTimer = null;
-async function startLivePolling(){
-  if (_liveTimer) return;
-  _liveTimer = setInterval(async () => {
-    try {
-      const fresh = await Storage.get('solys:pedidos', []);
-      const h = String(fresh.length) + ':' + fresh.slice(0,3).map(p=>p.id+'|'+p.status).join('#');
-      if (h !== _lastPedidosHash) {
-        _lastPedidosHash = h;
-        // Detecta pedidos novos comparando ids
-        const novos = fresh.filter(p => !state.pedidos.find(x=>x.id===p.id));
-        const mudouStatus = fresh.filter(p => {
-          const old = state.pedidos.find(x=>x.id===p.id);
-          return old && old.status !== p.status;
-        });
-        state.pedidos = fresh;
-        updateBadges();
-        // Diretoria/Admin recebe notif de pedidos novos
-        if (state.user && state.user.role !== 'Colaborador') {
-          for (const p of novos) {
-            const prio = prioInfo(p.prioridade);
-            await NotifCenter.push({
-              type: prio.cls==='critico' ? 'danger' : prio.cls==='alto' ? 'warn' : 'new',
-              text: `Novo pedido de <b>${escapeHtml(p.lojaNome)}</b> · ${escapeHtml(p.solicitante)} · <span class="muted">${p.itens.length} itens · prioridade ${p.prioridade||'Médio'}</span>`,
-              route: 'pedidos-colab',
-              pedidoId: p.id,
-            });
-          }
-        }
-        // Colaborador recebe resposta de mudança no SEU pedido
-        if (state.user && state.user.role === 'Colaborador') {
-          for (const p of mudouStatus) {
-            if (p.lojaId === state.user.lojaPreferida) {
-              await NotifCenter.push({
-                type: p.status==='Aprovado'||p.status==='Entregue' ? 'success' : p.status==='Rejeitado' ? 'danger' : 'info',
-                text: `Seu pedido (${fmt.date(p.data)}) mudou para <b>${escapeHtml(p.status)}</b>`,
-                route: 'minha-lista',
-              });
-            }
-          }
-        }
-        // Re-render se na tela relevante
-        if (['central','pedidos-colab','minha-lista','dashboard','ia'].includes(state.route)) renderRoute();
-      }
-    } catch(e){}
-  }, 4000);
+function startLivePolling(){
+  if (Cloud.ok()) Cloud.subscribe(onCloudPedidoEvent, onCloudLojaItemEvent);
 }
-function stopLivePolling(){ if (_liveTimer){ clearInterval(_liveTimer); _liveTimer=null; } }
+function stopLivePolling(){ Cloud.unsubscribe(); }
 
 /* ----------------------------------------------------------------
    UTILS
@@ -2618,11 +2701,13 @@ async function initAuth() {
   state.users = users;
 
   // Garante que as lojas estejam carregadas (necessárias na tela inicial)
-  state.lojas = await Storage.get('solys:lojas', null);
-  if (!Array.isArray(state.lojas) || !state.lojas.length) {
-    state.lojas = seedLojas();
-    await Storage.set('solys:lojas', state.lojas);
-  }
+  // Tenta Supabase primeiro; cache local como fallback
+  let lojas = null;
+  if (Cloud.ok()) lojas = await Cloud.loadLojas();
+  if (!Array.isArray(lojas) || !lojas.length) lojas = await Storage.get('solys:lojas', null);
+  if (!Array.isArray(lojas) || !lojas.length) lojas = seedLojas();
+  state.lojas = lojas;
+  await Storage.set('solys:lojas', state.lojas);
 
   // Sessão ativa?
   const session = await Storage.get('solys:session', null);
@@ -2771,31 +2856,87 @@ function applyRoleVisibility() {
    DATA LOADING / SEEDING
    ---------------------------------------------------------------- */
 async function loadAllData() {
-  state.purchases = await Storage.get('solys:purchases', null);
-  state.requests = await Storage.get('solys:requests', null);
+  // Dados puramente locais (preferências, logs do usuário)
+  state.purchases = await Storage.get('solys:purchases', []) || [];
+  state.requests = await Storage.get('solys:requests', []) || [];
   state.documents = await Storage.get('solys:documents', []);
   state.logs = await Storage.get('solys:logs', []);
   state.notifications = await Storage.get('solys:notifications', []);
-  state.lojas = await Storage.get('solys:lojas', null);
   state.colabRequests = await Storage.get('solys:colab_requests', []);
-  state.pedidos = await Storage.get('solys:pedidos', []);
 
-  // Seed inicial apenas se NUNCA houver dados
-  if (state.purchases === null) {
-    state.purchases = seedPurchases();
-    await Storage.set('solys:purchases', state.purchases);
-    await pushLog('seed', 'Dados iniciais de demonstração criados — compras', { count: state.purchases.length });
+  // SUPABASE — fonte da verdade para lojas e pedidos
+  if (Cloud.ok()) {
+    const [lojas, pedidos] = await Promise.all([Cloud.loadLojas(), Cloud.loadPedidos()]);
+    if (Array.isArray(lojas) && lojas.length) {
+      state.lojas = lojas;
+      await Storage.set('solys:lojas', lojas);    // cache local
+    } else {
+      // backend não retornou nada — usa cache local ou semeia
+      state.lojas = await Storage.get('solys:lojas', null);
+      if (!Array.isArray(state.lojas) || !state.lojas.length) state.lojas = seedLojas();
+    }
+    state.pedidos = Array.isArray(pedidos) ? pedidos : (await Storage.get('solys:pedidos', []) || []);
+  } else {
+    // offline / SDK não carregou
+    state.lojas = await Storage.get('solys:lojas', null);
+    if (!Array.isArray(state.lojas) || !state.lojas.length) {
+      state.lojas = seedLojas();
+      await Storage.set('solys:lojas', state.lojas);
+    }
+    state.pedidos = await Storage.get('solys:pedidos', []) || [];
   }
-  if (state.requests === null) {
-    state.requests = seedRequests();
-    await Storage.set('solys:requests', state.requests);
-    await pushLog('seed', 'Dados iniciais de demonstração criados — solicitações', { count: state.requests.length });
+}
+
+/* Handler de eventos realtime do Supabase — pedidos chegam e a tela atualiza */
+async function onCloudPedidoEvent(payload) {
+  const ev = payload.eventType;
+  if (ev === 'INSERT' && payload.new) {
+    const p = Cloud._mapPedido(payload.new);
+    // Evita duplicar se já tem (o autor já vê o pedido localmente)
+    if (!state.pedidos.find(x => x.id === p.id)) {
+      state.pedidos.unshift(p);
+      // Notificação só pra gestão (autor da loja já viu)
+      if (state.user && state.user.role !== 'Colaborador') {
+        await NotifCenter.push({
+          type:'new',
+          text:`Novo pedido de <b>${escapeHtml(p.lojaNome)}</b> · ${escapeHtml(p.solicitante)} · <span class="muted">${p.itens.length} itens</span>`,
+          route:'pedidos-colab',
+        });
+      }
+    }
+  } else if (ev === 'UPDATE' && payload.new) {
+    const p = Cloud._mapPedido(payload.new);
+    const idx = state.pedidos.findIndex(x => x.id === p.id);
+    if (idx >= 0) {
+      const before = state.pedidos[idx];
+      state.pedidos[idx] = p;
+      // Colaborador é notificado quando o status do SEU pedido muda
+      if (before.status !== p.status && state.user?.role === 'Colaborador' && state.user.lojaPreferida === p.lojaId) {
+        await NotifCenter.push({
+          type: p.status==='Aprovado'||p.status==='Entregue' ? 'success' : p.status==='Rejeitado' ? 'danger' : 'info',
+          text:`Seu pedido (${MES_NOME[isoToMesIdx(p.data)]}/${isoToAno(p.data)}) mudou para <b>${escapeHtml(p.status)}</b>`,
+          route:'minha-lista',
+        });
+      }
+    } else {
+      state.pedidos.unshift(p);
+    }
+  } else if (ev === 'DELETE' && payload.old) {
+    state.pedidos = state.pedidos.filter(x => x.id !== payload.old.id);
   }
-  if (!Array.isArray(state.lojas) || !state.lojas.length) {
-    state.lojas = seedLojas();
-    await Storage.set('solys:lojas', state.lojas);
-    const totalItens = state.lojas.reduce((s,l)=>s+l.itens.length,0);
-    await pushLog('seed', 'Lojas importadas da planilha SISTEMA_SOLYS_COMPRAS', { lojas: state.lojas.length, itens: totalItens });
+  await Storage.set('solys:pedidos', state.pedidos);
+  updateBadges();
+  if (['central','pedidos-colab','minha-lista','dashboard'].includes(state.route)) renderRoute();
+}
+
+async function onCloudLojaItemEvent(payload) {
+  // Recarrega lojas do servidor pra refletir a grade atual
+  if (!Cloud.ok()) return;
+  const lojas = await Cloud.loadLojas();
+  if (lojas) {
+    state.lojas = lojas;
+    await Storage.set('solys:lojas', lojas);
+    if (['lojas','loja-detalhe','minha-lista'].includes(state.route)) renderRoute();
   }
 }
 
@@ -4257,6 +4398,8 @@ async function updateLojaCell(lojaId, itemId, field, value) {
   if (!it.historico) it.historico = [];
   it.historico.push({ at:new Date().toISOString(), by:state.user?.name||'?', action:`alterou ${field}`, de:oldVal, para:it[field] });
   await Storage.set('solys:lojas', state.lojas);
+  // Persiste no Supabase
+  if (Cloud.ok()) await Cloud.upsertLojaItem(lojaId, it);
   await pushLog('loja-edit', `${state.user?.name||'?'} alterou ${field} de "${it.descricao}" em ${loja.nome}`, { de:oldVal, para:it[field] });
   // re-render row + footer totals
   const tbody = document.getElementById('lojaTbody');
@@ -4310,6 +4453,7 @@ async function saveNewLojaItem(lojaId) {
   novo[mNow] = qtd;
   loja.itens.push(novo);
   await Storage.set('solys:lojas', state.lojas);
+  if (Cloud.ok()) await Cloud.upsertLojaItem(lojaId, novo);
   await pushLog('loja-add', `${state.user?.name||'?'} adicionou "${desc}" em ${loja.nome}`, { qtd });
   closeModal();
   toast('Item adicionado', desc, 'success');
@@ -4323,6 +4467,7 @@ async function delLojaItem(lojaId, itemId) {
   if (!confirm(`Excluir "${it.descricao}"? Esta ação não pode ser desfeita.`)) return;
   loja.itens = loja.itens.filter(x => x.id !== itemId);
   await Storage.set('solys:lojas', state.lojas);
+  if (Cloud.ok()) await supa.from('loja_itens').delete().eq('id', itemId);
   await pushLog('loja-del', `${state.user?.name||'?'} removeu "${it.descricao}" de ${loja.nome}`);
   toast('Item removido', it.descricao, 'info');
   renderLojaDetalhe();
@@ -4998,23 +5143,27 @@ async function salvarPedido(editId) {
     Object.assign(p, { data, solicitante:solic, itens, observacao:obs, anexos });
     p.historico = p.historico || [];
     p.historico.push({ at:new Date().toISOString(), by:solic, action:'editado' });
+    if (Cloud.ok()) await Cloud.updatePedido(p.id, { data, solicitante:solic, itens, observacao:obs, anexos, historico:p.historico });
     await pushLog('pedido-edit', `Pedido de ${loja.nome} editado por ${solic}`, { itens: itens.length });
     toast('Pedido atualizado','', 'success');
   } else {
-    const novo = {
-      id: uid(),
+    const rascunho = {
       lojaId, lojaNome: loja.nome, lojaLocal: loja.localidade,
-      data, solicitante: solic, itens, observacao: obs,
-      anexos,
+      data, solicitante: solic, itens, observacao: obs, anexos,
       status: 'Pendente',
       criadoEm: new Date().toISOString(),
       historico: [{ at:new Date().toISOString(), by:solic, action:'criado' }],
     };
+    let novo = null;
+    if (Cloud.ok()) {
+      novo = await Cloud.insertPedido(rascunho);
+    }
+    if (!novo) { novo = { ...rascunho, id: uid() }; }
     state.pedidos.unshift(novo);
     // HISTÓRICO: soma as quantidades na grade mensal da loja (mês do pedido)
     await somarPedidoNaGradeLoja(loja, itens, data);
     await pushLog('pedido-novo', `${loja.nome}: novo pedido de ${solic} (${itens.length} itens) · ${MES_NOME[mesIdx]}`, { data });
-    toast('Pedido enviado','A gestão recebeu e o histórico foi atualizado','success');
+    toast('Pedido enviado','A diretoria foi notificada em tempo real','success');
   }
   await Storage.set('solys:pedidos', state.pedidos);
   updateBadges();
@@ -5029,11 +5178,11 @@ async function somarPedidoNaGradeLoja(loja, itens, data){
   if (!loja || !itens?.length) return;
   const mesIdx = isoToMesIdx(data);
   const mesKey = MESES[mesIdx];
-  let mudou = false;
 
-  itens.forEach(it => {
+  for (const it of itens) {
     const desc = (it.descricao||'').trim().toUpperCase();
-    if (!desc) return;
+    if (!desc) continue;
+    // Atualiza local imediatamente (UX rápido)
     let existente = loja.itens.find(x => (x.descricao||'').trim().toUpperCase() === desc);
     if (!existente) {
       existente = {
@@ -5041,53 +5190,24 @@ async function somarPedidoNaGradeLoja(loja, itens, data){
         jan:0,fev:0,mar:0,abr:0,mai:0,jun:0,jul:0,ago:0,set:0,out:0,nov:0,dez:0,
         obs:'',
         criadoEm: new Date().toISOString(),
-        historico: [{ at:new Date().toISOString(), by:'Pedido', action:'item criado via pedido' }]
+        historico: []
       };
       loja.itens.push(existente);
     }
     existente[mesKey] = (existente[mesKey]|0) + (it.quantidade|0);
-    existente.historico = existente.historico || [];
-    existente.historico.push({
-      at:new Date().toISOString(), by:state.user?.name||'?',
-      action:`+${it.quantidade} em ${mesKey} (pedido)`
-    });
-    mudou = true;
-  });
-
-  if (mudou) {
-    await Storage.set('solys:lojas', state.lojas);
+    // Persiste no Supabase
+    if (Cloud.ok()) await Cloud.incLojaItemMes(loja.id, desc, mesKey, it.quantidade|0);
   }
+  await Storage.set('solys:lojas', state.lojas);
 }
 
 /* ---- AÇÕES RÁPIDAS PARA GESTÃO ---- */
-async function aprovarRapido(id){
-  const p = state.pedidos.find(x=>x.id===id);
-  if (!p) return;
-  const antigo = p.status;
-  p.status = 'Aprovado';
-  p.respondidoPor = state.user.name;
-  p.historico = p.historico || [];
-  p.historico.push({ at:new Date().toISOString(), by:state.user.name, action:`status: ${antigo} → Aprovado` });
-  await Storage.set('solys:pedidos', state.pedidos);
-  await pushLog('pedido-aprov', `${state.user.name}: aprovou pedido de ${p.lojaNome}`);
-  toast('Pedido aprovado', p.lojaNome, 'success');
-  updateBadges();
-  if (['pedidos-colab','central'].includes(state.route)) renderRoute();
-}
+async function aprovarRapido(id){ await mudarStatusPedidoLocal(id, 'Aprovado'); }
 async function rejeitarPedido(id){
   const p = state.pedidos.find(x=>x.id===id);
   if (!p) return;
   if (!confirm(`Rejeitar pedido de ${p.lojaNome}?`)) return;
-  const antigo = p.status;
-  p.status = 'Rejeitado';
-  p.respondidoPor = state.user.name;
-  p.historico = p.historico || [];
-  p.historico.push({ at:new Date().toISOString(), by:state.user.name, action:`status: ${antigo} → Rejeitado` });
-  await Storage.set('solys:pedidos', state.pedidos);
-  await pushLog('pedido-rej', `${state.user.name}: rejeitou pedido de ${p.lojaNome}`);
-  toast('Pedido rejeitado', p.lojaNome, 'warning');
-  updateBadges();
-  if (['pedidos-colab','central'].includes(state.route)) renderRoute();
+  await mudarStatusPedidoLocal(id, 'Rejeitado');
 }
 async function marcarEmCompra(id){ await mudarStatusPedidoLocal(id, 'Em compra'); }
 async function marcarEntregue(id){ await mudarStatusPedidoLocal(id, 'Entregue'); }
@@ -5095,9 +5215,11 @@ async function reverterParaAprovado(id){ await mudarStatusPedidoLocal(id, 'Aprov
 async function mudarStatusPedidoLocal(id, novo){
   const p = state.pedidos.find(x=>x.id===id); if (!p || p.status===novo) return;
   const antigo = p.status;
-  p.status = novo; p.respondidoPor = state.user.name;
+  p.status = novo;
+  p.respondidoPor = state.user.name;
   p.historico = p.historico || [];
   p.historico.push({ at:new Date().toISOString(), by:state.user.name, action:`status: ${antigo} → ${novo}` });
+  if (Cloud.ok()) await Cloud.updatePedido(id, { status: novo, respondidoPor: state.user.name, historico: p.historico });
   await Storage.set('solys:pedidos', state.pedidos);
   await pushLog('pedido-status', `${state.user.name}: ${p.lojaNome} ${antigo} → ${novo}`);
   toast(`${p.lojaNome} → ${novo}`,'','success');
@@ -5156,7 +5278,8 @@ async function abrirDetalhePedido(id){
 async function excluirPedido(id) {
   const p = state.pedidos.find(x => x.id === id);
   if (!p || p.status !== 'Pendente') return;
-  if (!confirm(`Excluir o pedido de ${fmt.date(p.data)}?`)) return;
+  if (!confirm(`Excluir o pedido de ${MES_NOME[isoToMesIdx(p.data)]}/${isoToAno(p.data)}?`)) return;
+  if (Cloud.ok()) await Cloud.deletePedido(id);
   state.pedidos = state.pedidos.filter(x => x.id !== id);
   await Storage.set('solys:pedidos', state.pedidos);
   await pushLog('pedido-del', `Pedido de ${p.lojaNome} (${p.solicitante}) excluído`);
@@ -5230,27 +5353,26 @@ function renderBoardCol({ titulo, sub, cor, icone, lista }){
   </section>`;
 }
 
-/* Move pedidos entregues há mais de 20 dias para arquivo. */
+/* Move pedidos entregues há mais de 20 dias para o status 'Arquivado'. */
 async function arquivarEntreguesAntigos(){
   const limite = Date.now() - 20*86400*1000;
   const arquivar = [];
-  const restantes = [];
   for (const p of state.pedidos) {
-    if (p.status === 'Entregue') {
-      // pega a data da última mudança pra 'Entregue' OU criadoEm como fallback
-      const movEntregue = (p.historico||[]).slice().reverse().find(h => (h.action||'').includes('→ Entregue'));
-      const refDate = movEntregue ? new Date(movEntregue.at).getTime() : new Date(p.criadoEm).getTime();
-      if (refDate < limite) { arquivar.push(p); continue; }
-    }
-    restantes.push(p);
+    if (p.status !== 'Entregue') continue;
+    const movEntregue = (p.historico||[]).slice().reverse().find(h => (h.action||'').includes('→ Entregue'));
+    const refDate = movEntregue ? new Date(movEntregue.at).getTime() : new Date(p.criadoEm).getTime();
+    if (refDate < limite) arquivar.push(p);
   }
   if (!arquivar.length) return;
-  const arquivo = await Storage.get('solys:pedidos:arquivo', []);
-  arquivo.unshift(...arquivar);
-  await Storage.set('solys:pedidos:arquivo', arquivo);
-  state.pedidos = restantes;
+  for (const p of arquivar) {
+    p.status = 'Arquivado';
+    p.historico = p.historico || [];
+    p.historico.push({ at:new Date().toISOString(), by:'Sistema', action:'status: Entregue → Arquivado (20d)' });
+    if (Cloud.ok()) await Cloud.updatePedido(p.id, { status:'Arquivado', historico: p.historico });
+  }
+  state.pedidos = state.pedidos.filter(p => p.status !== 'Arquivado');
   await Storage.set('solys:pedidos', state.pedidos);
-  await pushLog('pedido-arq', `${arquivar.length} pedido(s) entregue há mais de 20 dias foram arquivados automaticamente`);
+  await pushLog('pedido-arq', `${arquivar.length} pedido(s) entregue há mais de 20 dias foram arquivados`);
 }
 
 function renderPedidosKanban(items){
@@ -5326,6 +5448,7 @@ async function salvarRespostaPedido(id) {
   if (!p) return;
   p.respostaAdmin = document.getElementById('pedResposta').value.trim();
   p.respondidoPor = state.user.name;
+  if (Cloud.ok()) await Cloud.updatePedido(id, { respostaAdmin: p.respostaAdmin, respondidoPor: state.user.name });
   await Storage.set('solys:pedidos', state.pedidos);
   await pushLog('pedido-resp', `${state.user.name} respondeu pedido de ${p.lojaNome}`);
   closeModal();
