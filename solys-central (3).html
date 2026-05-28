@@ -2422,7 +2422,7 @@ async function initAuth() {
 
   // Garante que as lojas estejam carregadas (necessárias na tela inicial)
   state.lojas = await Storage.get('solys:lojas', null);
-  if (state.lojas === null) {
+  if (!Array.isArray(state.lojas) || !state.lojas.length) {
     state.lojas = seedLojas();
     await Storage.set('solys:lojas', state.lojas);
   }
@@ -2594,7 +2594,7 @@ async function loadAllData() {
     await Storage.set('solys:requests', state.requests);
     await pushLog('seed', 'Dados iniciais de demonstração criados — solicitações', { count: state.requests.length });
   }
-  if (state.lojas === null) {
+  if (!Array.isArray(state.lojas) || !state.lojas.length) {
     state.lojas = seedLojas();
     await Storage.set('solys:lojas', state.lojas);
     const totalItens = state.lojas.reduce((s,l)=>s+l.itens.length,0);
@@ -4250,9 +4250,18 @@ function pedidosDaLoja(lojaId) {
 function referenciaMesAnterior(loja) {
   const meus = pedidosDaLoja(loja.id);
   if (meus.length) {
-    return { tipo:'pedido', pedido: meus[0] };
+    const ultimo = meus[0];
+    return {
+      tipo:'pedido',
+      pedido: ultimo,
+      itens: ultimo.itens.map(i => ({
+        descricao: i.descricao,
+        quantidade: i.quantidade||1,
+        unidade: i.unidade||'un'
+      }))
+    };
   }
-  // fallback: controle mensal da loja
+  // fallback: controle mensal da loja (planilha SISTEMA_SOLYS_COMPRAS)
   const mesIdx = new Date().getMonth();
   const prevIdx = (mesIdx + 11) % 12;
   const ordem = [prevIdx];
@@ -4267,14 +4276,40 @@ function referenciaMesAnterior(loja) {
 
 function renderMinhaLista() {
   const c = document.getElementById('content');
-  const lojaId = getLojaSelecionada();
-  const loja = state.lojas.find(l => l.id === lojaId);
+  let lojaId = getLojaSelecionada();
+  let loja = state.lojas.find(l => l.id === lojaId);
+
+  // Fallback: tenta casar pelo NOME ou CÓDIGO da loja
+  // (caso o id salvo na sessão esteja defasado em relação ao seed atual)
+  if (!loja && state.user) {
+    const nome = (state.user.name||'').trim().toLowerCase();
+    const local = (state.user.sector||'').trim().toLowerCase();
+    loja = state.lojas.find(l => (l.nome||'').toLowerCase() === nome)
+        || state.lojas.find(l => (l.localidade||'').toLowerCase() === local)
+        || state.lojas.find(l => (l.codigo||'').toLowerCase() === nome.replace('loja ',''));
+    if (loja) {
+      state.user.lojaPreferida = loja.id;
+      // Atualiza a sessão pra refletir o id correto
+      Storage.set('solys:session', { tipo:'loja', lojaId: loja.id, at: new Date().toISOString() });
+    }
+  }
 
   if (!loja) {
-    c.innerHTML = `<div class="panel" style="text-align:center;padding:40px">
-      <p class="muted">Não foi possível identificar sua loja.</p>
-      <button class="btn gold" onclick="logout()" style="margin-top:12px">Voltar e escolher loja</button>
-    </div>`;
+    const opcoes = state.lojas.map(l =>
+      `<button class="login-loja" onclick="entrarComoLoja('${l.id}')" style="width:100%;margin-bottom:8px">
+        <div class="login-loja-icon"><i data-lucide="store"></i></div>
+        <div style="min-width:0;text-align:left">
+          <div class="login-loja-name">${escapeHtml(l.nome.replace('Loja ',''))}</div>
+          <div class="login-loja-local">${escapeHtml(l.localidade)}</div>
+        </div>
+      </button>`
+    ).join('');
+    c.innerHTML = `
+      <div class="page-header"><div><h1 class="page-title">Selecione sua loja</h1><p class="page-sub">Não conseguimos vincular sua sessão a uma loja — escolha abaixo</p></div></div>
+      <div class="panel" style="max-width:480px">
+        ${opcoes || '<div class="empty-state"><i data-lucide="store"></i><p>Nenhuma loja cadastrada.</p></div>'}
+      </div>`;
+    setTimeout(()=>lucide.createIcons(),30);
     return;
   }
 
