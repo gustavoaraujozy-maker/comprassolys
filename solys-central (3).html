@@ -124,6 +124,19 @@ a{color:inherit;text-decoration:none}
   box-shadow:var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,.05);
 }
 .login-brand{display:flex;align-items:center;gap:14px;margin-bottom:32px}
+.login-brand-logo{flex-direction:column;align-items:center;gap:6px;margin-bottom:28px}
+.brand-logo-img{width:170px;height:auto;display:block;filter:drop-shadow(0 6px 18px rgba(0,0,0,.35))}
+.brand-sub-tag{
+  font-size:11px;color:var(--gold-400);
+  letter-spacing:.32em;text-transform:uppercase;font-weight:600;
+  margin-top:-2px;
+}
+.brand-with-logo{flex-direction:column;align-items:flex-start;padding:18px 18px 14px;gap:6px}
+.brand-side-img{width:130px;height:auto;display:block;filter:drop-shadow(0 4px 10px rgba(0,0,0,.3))}
+.brand-with-logo .brand-tag{
+  font-size:9px;color:var(--gold-400);
+  letter-spacing:.22em;text-transform:uppercase;font-weight:600;margin-top:0;
+}
 .login-mark{
   width:52px;height:52px;
   display:grid;place-items:center;
@@ -2252,12 +2265,9 @@ textarea.fld{resize:vertical;line-height:1.5}
      ============================================================ -->
 <div id="login" class="login-screen">
   <div class="login-card">
-    <div class="login-brand">
-      <div class="login-mark">S</div>
-      <div>
-        <h1>SOLYS</h1>
-        <p>Central Administrativa</p>
-      </div>
+    <div class="login-brand login-brand-logo">
+      <img src="assets/solys-logo.png" alt="SOLYS" class="brand-logo-img" />
+      <div class="brand-sub-tag">Logística de Compras</div>
     </div>
     <div class="login-title">Acesso à plataforma</div>
     <p class="login-sub">Selecione sua loja e informe a senha</p>
@@ -2307,12 +2317,9 @@ textarea.fld{resize:vertical;line-height:1.5}
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-mark">S</div>
-      <div>
-        <div class="brand-name">SOLYS</div>
-        <div class="brand-tag">Central Adm.</div>
-      </div>
+    <div class="brand brand-with-logo">
+      <img src="assets/solys-logo.png" alt="SOLYS" class="brand-side-img" />
+      <div class="brand-tag">Logística de Compras</div>
     </div>
 
     <nav class="nav" id="nav">
