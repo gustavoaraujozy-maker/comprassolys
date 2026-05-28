@@ -1452,7 +1452,7 @@ textarea.fld{resize:vertical;line-height:1.5}
   border:1px solid rgba(255,255,255,.04);
   border-radius:10px;
   display:flex;flex-direction:column;gap:6px;
-  max-height:160px;overflow-y:auto;
+  max-height:320px;overflow-y:auto;
 }
 .ped-v2 .ped-itens-v2.expanded{max-height:none}
 .ped-v2 .ped-li{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-100);line-height:1.3}
@@ -4765,11 +4765,13 @@ function renderPedidoCardV2(p, opts={}){
     quickActions = `<button class="qbtn go" onclick="marcarEntregue('${p.id}')"><i data-lucide="package-check"></i>Marcar entregue</button>`;
   } else if (modo === 'gestao' && p.status === 'Entregue') {
     quickActions = `<button class="qbtn" onclick="reverterParaAprovado('${p.id}')" title="Voltar para Aprovados"><i data-lucide="undo-2"></i>Reverter</button>`;
-  } else if (modo === 'colab' && podeEditar && p.status === 'Pendente') {
+  } else if (modo === 'colab' && p.status === 'Pendente') {
     quickActions = `
       <button class="qbtn" onclick="abrirNovoPedido('${p.id}')"><i data-lucide="edit-3"></i>Editar</button>
-      <button class="qbtn no" onclick="excluirPedido('${p.id}')"><i data-lucide="trash-2"></i></button>
+      <button class="qbtn no" onclick="excluirPedido('${p.id}')"><i data-lucide="trash-2"></i>Excluir</button>
     `;
+  } else if (modo === 'colab' && (p.status === 'Aprovado' || p.status === 'Em compra')) {
+    quickActions = `<button class="qbtn" onclick="abrirDetalhePedido('${p.id}')"><i data-lucide="eye"></i>Ver detalhes</button>`;
   }
   if (modo === 'gestao') {
     quickActions += `<button class="qbtn" onclick="abrirDetalhePedido('${p.id}')" title="Detalhes"><i data-lucide="eye"></i></button>`;
@@ -4800,11 +4802,10 @@ function renderPedidoCardV2(p, opts={}){
     </div>
 
     <div class="ped-itens-v2">
-      ${p.itens.slice(0,8).map(it => `<div class="ped-li">
+      ${p.itens.map(it => `<div class="ped-li">
         <span class="qq">${it.quantidade}${it.unidade && it.unidade!=='un' ? ' '+escapeHtml(it.unidade):''}</span>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(it.descricao)}</span>
       </div>`).join('')}
-      ${p.itens.length > 8 ? `<div class="ped-li" style="color:var(--ink-300);font-style:italic">+ ${p.itens.length-8} item${p.itens.length-8>1?'ns':''}...</div>` : ''}
     </div>
 
     ${p.observacao ? `<div class="ped-obs-v2"><i data-lucide="message-square"></i> ${escapeHtml(p.observacao)}</div>` : ''}
