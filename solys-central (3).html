@@ -2110,6 +2110,30 @@ textarea.fld{resize:vertical;line-height:1.5}
 .board-col .ped-v2{font-size:12.5px}
 .board-col .ped-v2 .ped-itens-v2{max-height:120px}
 
+/* Tag de status no card de login da loja */
+.login-loja-v2 .ll-tag{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px;border-radius:99px;
+  font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  background:rgba(52,211,153,.14);color:#86efac;border:1px solid rgba(52,211,153,.25);
+  white-space:nowrap;
+}
+.login-loja-v2 .ll-tag svg{width:9px;height:9px}
+.login-loja-v2 .ll-tag.ll-tag-new{
+  background:rgba(200,155,60,.14);color:var(--gold-300);border-color:rgba(200,155,60,.3);
+}
+
+/* Status na aba Acessos */
+.acesso-card .ac-status{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px;border-radius:99px;
+  font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  white-space:nowrap;flex-shrink:0;
+}
+.acesso-card .ac-status svg{width:10px;height:10px}
+.acesso-card .ac-status.ok{background:rgba(52,211,153,.14);color:#86efac;border:1px solid rgba(52,211,153,.25)}
+.acesso-card .ac-status.pend{background:rgba(200,155,60,.14);color:var(--gold-300);border:1px solid rgba(200,155,60,.3)}
+
 /* ACESSOS — credenciais das lojas */
 .acessos-grid{
   display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px;
@@ -2374,6 +2398,7 @@ const Cloud = {
     return {
       id: l.id, codigo: l.codigo, nome: l.nome, localidade: l.localidade,
       acessoId: l.acesso_id || '', senha: l.senha || '',
+      solicitanteNome: l.solicitante_nome || '', cadastrado: !!l.cadastrado,
       criadoEm: l.criado_em,
       itens: (l.loja_itens || []).map(it => ({
         id: it.id, descricao: it.descricao,
@@ -2394,6 +2419,22 @@ const Cloud = {
     if (!this.ok()) return false;
     const { error } = await supa.from('lojas').update({ acesso_id: novoId }).eq('id', lojaId);
     if (error) { toast('Erro ao salvar ID', error.message, 'error'); return false; }
+    return true;
+  },
+  async cadastrarLoja(lojaId, solicitante, novaSenha){
+    if (!this.ok()) return false;
+    const { error } = await supa.from('lojas').update({
+      solicitante_nome: solicitante, senha: novaSenha, cadastrado: true
+    }).eq('id', lojaId);
+    if (error) { toast('Erro ao cadastrar', error.message, 'error'); return false; }
+    return true;
+  },
+  async resetarCadastroLoja(lojaId){
+    if (!this.ok()) return false;
+    const { error } = await supa.from('lojas').update({
+      solicitante_nome: '', senha: 'Sgroup@2026#', cadastrado: false
+    }).eq('id', lojaId);
+    if (error) { toast('Erro ao resetar', error.message, 'error'); return false; }
     return true;
   },
   _mapPedido(p) {
@@ -2968,6 +3009,7 @@ function pseudoUserLoja(loja) {
   return {
     id: 'loja-' + loja.id,
     name: loja.nome,
+    solicitante: loja.solicitanteNome || '',
     role: 'Colaborador',
     sector: loja.localidade,
     lojaPreferida: loja.id,
@@ -2978,7 +3020,7 @@ function pseudoUserLoja(loja) {
 function showLogin() {
   document.getElementById('login').style.display = 'flex';
   document.getElementById('app').classList.remove('active');
-  // Preenche a grade de lojas — cada loja com seus campos de ID e senha
+  // Preenche a grade de lojas — cada loja com campo de senha
   const grid = document.getElementById('loginLojas');
   if (grid && state.lojas) {
     grid.innerHTML = state.lojas.map(l => `
@@ -2989,14 +3031,14 @@ function showLogin() {
             <div class="login-loja-name">${escapeHtml(l.nome.replace('Loja ',''))}</div>
             <div class="login-loja-local">${escapeHtml(l.localidade)}</div>
           </div>
+          ${l.cadastrado ? `<span class="ll-tag" title="Cadastrada por ${escapeHtml(l.solicitanteNome||'')}">${escapeHtml((l.solicitanteNome||'').split(' ')[0]||'')}</span>` : `<span class="ll-tag ll-tag-new"><i data-lucide="sparkles"></i>1º acesso</span>`}
         </div>
         <div class="ll-form">
-          <input type="text" class="ll-input" placeholder="ID de acesso" id="lid-${l.id}" autocomplete="off" onkeydown="if(event.key==='Enter')document.getElementById('lpw-${l.id}').focus()" />
           <div class="ll-pwd">
-            <input type="password" class="ll-input" placeholder="Senha" id="lpw-${l.id}" autocomplete="off" onkeydown="if(event.key==='Enter')loginLoja('${l.id}')" />
+            <input type="password" class="ll-input" placeholder="${l.cadastrado ? 'Senha' : 'Senha inicial: Sgroup@2026#'}" id="lpw-${l.id}" autocomplete="off" onkeydown="if(event.key==='Enter')loginLoja('${l.id}')" />
             <button class="ll-eye" type="button" onclick="togglePwd('lpw-${l.id}', this)" title="Mostrar/ocultar"><i data-lucide="eye"></i></button>
           </div>
-          <button class="ll-btn" onclick="loginLoja('${l.id}')"><i data-lucide="log-in"></i>Entrar</button>
+          <button class="ll-btn" onclick="loginLoja('${l.id}')"><i data-lucide="log-in"></i>${l.cadastrado ? 'Entrar' : 'Acessar e cadastrar'}</button>
         </div>
       </div>
     `).join('');
@@ -3016,16 +3058,73 @@ function togglePwd(inputId, btn){
 async function loginLoja(lojaId){
   const loja = state.lojas.find(l => l.id === lojaId);
   if (!loja) { toast('Erro','Loja não encontrada','error'); return; }
-  const id = (document.getElementById(`lid-${lojaId}`)?.value || '').trim();
   const senha = (document.getElementById(`lpw-${lojaId}`)?.value || '');
-  if (!id || !senha) { toast('Atenção','Preencha ID e senha','warning'); return; }
-  if (id.toUpperCase() !== (loja.acessoId||'').toUpperCase() || senha !== (loja.senha||'')) {
-    toast('Acesso negado','ID ou senha incorretos','error');
+  if (!senha) { toast('Atenção','Informe a senha','warning'); return; }
+
+  // Senha atual da loja precisa bater
+  if (senha !== (loja.senha||'')) {
+    toast('Acesso negado','Senha incorreta','error');
     return;
   }
+
+  // Se não cadastrada: abre modal pra cadastrar nome + nova senha
+  if (!loja.cadastrado) {
+    abrirCadastroPrimeiroAcesso(lojaId);
+    return;
+  }
+
+  // Já cadastrada: entra direto
   state.user = pseudoUserLoja(loja);
   await Storage.set('solys:session', { tipo:'loja', lojaId: loja.id, at: new Date().toISOString() });
-  await pushLog('login', `Entrada pela loja ${loja.nome}`, { loja: loja.nome });
+  await pushLog('login', `Entrada pela loja ${loja.nome} (${loja.solicitanteNome||'?'})`, { loja: loja.nome });
+  enterApp();
+}
+
+function abrirCadastroPrimeiroAcesso(lojaId){
+  const loja = state.lojas.find(l => l.id === lojaId);
+  if (!loja) return;
+  openModal({
+    title:`Primeiro acesso · ${loja.nome}`,
+    body:`
+      <div style="background:rgba(200,155,60,.08);border:1px solid rgba(200,155,60,.2);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12.5px;color:var(--ink-200);line-height:1.5">
+        <b style="color:var(--gold-300)">Cadastro inicial.</b> Informe seu nome (ele será usado como solicitante nos pedidos) e crie uma nova senha — ela substituirá a senha padrão da loja.
+      </div>
+      <label class="fld-label">Seu nome completo</label>
+      <input type="text" id="cadNome" class="fld" placeholder="Ex: Luís Gustavo" autofocus />
+      <label class="fld-label" style="margin-top:12px">Nova senha</label>
+      <input type="password" id="cadSenha1" class="fld" placeholder="Mín. 6 caracteres" />
+      <label class="fld-label" style="margin-top:12px">Confirme a nova senha</label>
+      <input type="password" id="cadSenha2" class="fld" placeholder="Repita a senha" onkeydown="if(event.key==='Enter')concluirCadastroLoja('${lojaId}')" />
+    `,
+    actions:`
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn gold" onclick="concluirCadastroLoja('${lojaId}')"><i data-lucide="user-plus"></i>Cadastrar e entrar</button>
+    `
+  });
+  setTimeout(()=>{ lucide.createIcons(); document.getElementById('cadNome')?.focus(); },60);
+}
+
+async function concluirCadastroLoja(lojaId){
+  const loja = state.lojas.find(l => l.id === lojaId);
+  if (!loja) return;
+  const nome = (document.getElementById('cadNome').value||'').trim();
+  const s1 = document.getElementById('cadSenha1').value || '';
+  const s2 = document.getElementById('cadSenha2').value || '';
+  if (!nome || nome.length < 2) { toast('Atenção','Informe seu nome completo','warning'); return; }
+  if (s1.length < 6) { toast('Atenção','A senha precisa ter no mínimo 6 caracteres','warning'); return; }
+  if (s1 !== s2) { toast('Atenção','As senhas não conferem','warning'); return; }
+
+  loja.solicitanteNome = nome;
+  loja.senha = s1;
+  loja.cadastrado = true;
+  if (Cloud.ok()) await Cloud.cadastrarLoja(lojaId, nome, s1);
+  await Storage.set('solys:lojas', state.lojas);
+
+  state.user = pseudoUserLoja(loja);
+  await Storage.set('solys:session', { tipo:'loja', lojaId: loja.id, at: new Date().toISOString() });
+  await pushLog('loja-cadastro', `${nome} se cadastrou como solicitante da ${loja.nome}`);
+  closeModal();
+  toast('Cadastro concluído',`Bem-vindo(a), ${nome}`, 'success');
   enterApp();
 }
 
@@ -3100,10 +3199,16 @@ async function enterApp() {
 
 function updateUserChip() {
   if (!state.user) return;
-  const initials = state.user.name.replace('Loja ','').split(' ').slice(0,2).map(s=>s[0]).join('').toUpperCase();
+  // Para loja: mostra o nome do solicitante; para gestão: nome do usuário
+  const displayName = state.user.isLoja && state.user.solicitante
+                    ? state.user.solicitante
+                    : state.user.name;
+  const initials = displayName.replace('Loja ','').split(' ').slice(0,2).map(s=>s[0]).join('').toUpperCase();
   document.getElementById('userAvatar').textContent = initials;
-  document.getElementById('userName').textContent = state.user.name;
-  document.getElementById('userRole').textContent = state.user.isLoja ? ('Loja · ' + (state.user.sector||'')) : state.user.role;
+  document.getElementById('userName').textContent = displayName;
+  document.getElementById('userRole').textContent = state.user.isLoja
+    ? `${state.user.name.replace('Loja ','')} · ${state.user.sector||''}`
+    : state.user.role;
 }
 
 function applyRoleVisibility() {
@@ -5302,7 +5407,7 @@ function abrirNovoPedido(editId) {
         </div>
         <div>
           <label class="fld-label">Quem está solicitando</label>
-          <input type="text" id="pedSolic" class="fld" placeholder="Seu nome" value="${editando ? escapeHtml(editando.solicitante) : ''}" />
+          <input type="text" id="pedSolic" class="fld" placeholder="Seu nome" value="${editando ? escapeHtml(editando.solicitante) : escapeHtml(state.user?.solicitante || '')}" />
         </div>
       </div>
 
@@ -6362,14 +6467,13 @@ function openUserModal() {
 function renderAcessos(){
   const c = document.getElementById('content');
   state._mostrarSenhas = state._mostrarSenhas || {};
+  const cadastradas = state.lojas.filter(l => l.cadastrado).length;
+  const pendentes = state.lojas.length - cadastradas;
   c.innerHTML = `
     <div class="page-header">
       <div>
         <h1 class="page-title">Acessos das lojas</h1>
-        <p class="page-sub">Credenciais de login de cada unidade · ${state.lojas.length} loja(s)</p>
-      </div>
-      <div class="page-actions">
-        <button class="btn" onclick="copiarAcessosCSV()"><i data-lucide="clipboard-copy"></i>Copiar tudo</button>
+        <p class="page-sub">${cadastradas} cadastrada(s) · ${pendentes} aguardando 1º acesso · senha padrão <code class="mono" style="color:var(--gold-300)">Sgroup@2026#</code></p>
       </div>
     </div>
 
@@ -6384,27 +6488,28 @@ function renderAcessos(){
               <div class="ac-nome">${escapeHtml(l.nome)}</div>
               <div class="ac-local"><i data-lucide="map-pin"></i>${escapeHtml(l.localidade)}</div>
             </div>
+            ${l.cadastrado
+              ? `<span class="ac-status ok"><i data-lucide="check-circle"></i>Cadastrada</span>`
+              : `<span class="ac-status pend"><i data-lucide="clock"></i>1º acesso</span>`}
           </div>
           <div class="ac-fields">
             <div class="ac-field">
-              <div class="ac-lbl">ID de acesso</div>
+              <div class="ac-lbl">Solicitante</div>
               <div class="ac-val-row">
-                <code class="ac-val mono">${escapeHtml(l.acessoId||'—')}</code>
-                <button class="icon-btn" onclick="copiarTexto('${escapeHtml(l.acessoId||'')}','ID')" title="Copiar"><i data-lucide="copy"></i></button>
+                <span class="ac-val">${escapeHtml(l.solicitanteNome || '— ainda não cadastrado —')}</span>
               </div>
             </div>
             <div class="ac-field">
-              <div class="ac-lbl">Senha</div>
+              <div class="ac-lbl">Senha atual</div>
               <div class="ac-val-row">
-                <code class="ac-val mono">${showPwd ? escapeHtml(l.senha||'') : '•'.repeat((l.senha||'').length)}</code>
+                <code class="ac-val mono">${showPwd ? escapeHtml(l.senha||'') : '•'.repeat((l.senha||'').length || 8)}</code>
                 <button class="icon-btn" onclick="toggleMostrarSenha('${l.id}')" title="${showPwd?'Ocultar':'Mostrar'}"><i data-lucide="${showPwd?'eye-off':'eye'}"></i></button>
                 <button class="icon-btn" onclick="copiarTexto('${escapeHtml(l.senha||'')}','Senha')" title="Copiar"><i data-lucide="copy"></i></button>
               </div>
             </div>
           </div>
           <div class="ac-acoes">
-            <button class="qbtn" onclick="abrirEditarAcesso('${l.id}')"><i data-lucide="edit-3"></i>Editar credenciais</button>
-            <button class="qbtn" onclick="resetarSenhaLoja('${l.id}')"><i data-lucide="rotate-cw"></i>Reset</button>
+            <button class="qbtn" onclick="resetarCadastroLojaUI('${l.id}')" title="Limpa o cadastro e volta para a senha padrão"><i data-lucide="rotate-cw"></i>Resetar cadastro</button>
           </div>
         </div>`;
       }).join('')}
@@ -6414,18 +6519,31 @@ function renderAcessos(){
       <div class="panel-head">
         <div>
           <div class="panel-title"><i data-lucide="info" style="width:14px;height:14px;display:inline-block;vertical-align:-2px;color:var(--gold-400)"></i> Como funciona</div>
-          <div class="panel-sub">Compartilhe o ID e a senha com o responsável da loja</div>
         </div>
       </div>
       <ol style="padding-left:20px;font-size:13px;line-height:1.85;color:var(--ink-200)">
-        <li>Cada loja tem um <b style="color:var(--gold-300)">ID único</b> gerado automaticamente.</li>
-        <li>A senha padrão é <code class="mono">Sgroup@2026#</code> — pode ser alterada por loja em "Editar credenciais".</li>
-        <li>O colaborador da loja entra na tela de login, seleciona a unidade, digita ID e senha.</li>
-        <li>Se trocar a senha, somente a Diretoria vê a nova credencial aqui.</li>
+        <li>Cada loja começa com a senha padrão <code class="mono">Sgroup@2026#</code>.</li>
+        <li>No <b style="color:var(--gold-300)">primeiro acesso</b>, a pessoa informa seu nome e cria uma nova senha — esse nome passa a ser o <b>solicitante</b> de todos os pedidos da loja.</li>
+        <li>A partir daí, só a nova senha funciona.</li>
+        <li>Se precisar trocar de pessoa, clique em <b>"Resetar cadastro"</b> — a senha volta ao padrão e a próxima pessoa faz o novo cadastro.</li>
       </ol>
     </div>
   `;
   setTimeout(()=>lucide.createIcons(), 30);
+}
+
+async function resetarCadastroLojaUI(lojaId){
+  const l = state.lojas.find(x => x.id === lojaId);
+  if (!l) return;
+  if (!confirm(`Resetar o cadastro de ${l.nome}?\n\nA senha volta para "Sgroup@2026#" e o nome do solicitante atual${l.solicitanteNome?` (${l.solicitanteNome})`:''} será apagado. A próxima pessoa precisará se cadastrar novamente.`)) return;
+  l.solicitanteNome = '';
+  l.senha = 'Sgroup@2026#';
+  l.cadastrado = false;
+  if (Cloud.ok()) await Cloud.resetarCadastroLoja(lojaId);
+  await Storage.set('solys:lojas', state.lojas);
+  await pushLog('loja-reset', `Cadastro de ${l.nome} resetado`);
+  toast('Cadastro resetado', l.nome, 'info');
+  renderAcessos();
 }
 
 function toggleMostrarSenha(lojaId){
