@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import { createHashRouter, Navigate, Outlet } from 'react-router-dom';
 import paths, { rootPaths } from './path';
 import { RequireAuth } from './RequireAuth';
 
@@ -57,5 +57,5 @@ export const routes = [
   },
 ];
 
-const router = createBrowserRouter(routes, { basename: '/' });
+const router = createHashRouter(routes);
 export default router;

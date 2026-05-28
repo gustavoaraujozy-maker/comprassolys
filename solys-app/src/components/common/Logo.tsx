@@ -1,10 +1,11 @@
 import { Box, Stack, Typography } from '@mui/material';
 import Image from 'components/base/Image';
+import solysLogo from 'assets/solys-logo.png';
 
 const Logo = () => {
   return (
     <Stack direction="row" alignItems="center" spacing={1.5} sx={{ width: '100%' }}>
-      <Image src="./solys-logo.png" alt="SOLYS" sx={{ width: 44, height: 'auto' }} />
+      <Image src={solysLogo} alt="SOLYS" sx={{ width: 44, height: 'auto' }} />
       <Box sx={{ minWidth: 0 }}>
         <Typography
           variant="h2"
