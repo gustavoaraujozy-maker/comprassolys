@@ -1356,6 +1356,71 @@ textarea.fld{resize:vertical;line-height:1.5}
 .ped-v2.med::before{background:linear-gradient(180deg,#fbbf24,transparent);opacity:.6}
 .ped-v2.aprovado::before{background:linear-gradient(180deg,#34d399,transparent);opacity:.8}
 .ped-v2.rejeitado{opacity:.7}
+
+/* CARD COLORIDO POR STATUS — domina o visual */
+.ped-v2.st-pendente{
+  background:linear-gradient(180deg, rgba(239,68,68,.18), rgba(220,38,38,.06));
+  border-color:rgba(239,68,68,.35);
+  box-shadow:0 0 0 1px rgba(239,68,68,.18), 0 18px 40px -16px rgba(239,68,68,.18);
+}
+.ped-v2.st-pendente::before{background:linear-gradient(180deg,#ef4444,#dc2626);opacity:1}
+.ped-v2.st-pendente:hover{border-color:rgba(239,68,68,.55);box-shadow:0 0 0 1px rgba(239,68,68,.3), 0 24px 60px -16px rgba(239,68,68,.25)}
+
+.ped-v2.st-aprovado{
+  background:linear-gradient(180deg, rgba(52,211,153,.18), rgba(16,185,129,.05));
+  border-color:rgba(52,211,153,.35);
+  box-shadow:0 0 0 1px rgba(52,211,153,.18), 0 18px 40px -16px rgba(52,211,153,.16);
+}
+.ped-v2.st-aprovado::before{background:linear-gradient(180deg,#34d399,#10b981);opacity:1}
+.ped-v2.st-aprovado:hover{border-color:rgba(52,211,153,.55);box-shadow:0 0 0 1px rgba(52,211,153,.3), 0 24px 60px -16px rgba(52,211,153,.25)}
+
+.ped-v2.st-em-compra{
+  background:linear-gradient(180deg, rgba(46,116,201,.18), rgba(46,116,201,.05));
+  border-color:rgba(46,116,201,.35);
+  box-shadow:0 0 0 1px rgba(46,116,201,.18), 0 18px 40px -16px rgba(46,116,201,.16);
+}
+.ped-v2.st-em-compra::before{background:linear-gradient(180deg,#7eb3f0,#2e74c9);opacity:1}
+
+.ped-v2.st-entregue{
+  background:linear-gradient(180deg, rgba(16,185,129,.22), rgba(5,150,105,.08));
+  border-color:rgba(16,185,129,.45);
+  box-shadow:0 0 0 1px rgba(16,185,129,.22), 0 18px 40px -16px rgba(16,185,129,.18);
+}
+.ped-v2.st-entregue::before{background:linear-gradient(180deg,#10b981,#059669);opacity:1}
+
+.ped-v2.st-rejeitado{
+  background:linear-gradient(180deg, rgba(120,120,130,.12), rgba(80,80,90,.04));
+  border-color:rgba(255,255,255,.06);
+  opacity:.75;
+}
+.ped-v2.st-rejeitado::before{background:linear-gradient(180deg,#94a3b8,transparent);opacity:.5}
+
+/* Pulso vermelho no card pendente */
+.ped-v2.st-pendente::after{
+  content:'';position:absolute;top:14px;right:14px;
+  width:8px;height:8px;border-radius:50%;
+  background:#ef4444;box-shadow:0 0 12px #ef4444;
+  animation:pulseRed 1.5s infinite;
+}
+.ped-v2.st-aprovado::after{
+  content:'';position:absolute;top:14px;right:14px;
+  width:8px;height:8px;border-radius:50%;
+  background:#34d399;box-shadow:0 0 12px #34d399;
+}
+
+/* Label "Aguardando aprovação" / "Aprovado" forte */
+.status-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:99px;
+  font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  border:1px solid transparent;
+}
+.status-badge svg{width:12px;height:12px}
+.status-badge.b-pendente{background:rgba(239,68,68,.22);color:#fca5a5;border-color:rgba(239,68,68,.4)}
+.status-badge.b-aprovado{background:rgba(52,211,153,.22);color:#86efac;border-color:rgba(52,211,153,.4)}
+.status-badge.b-em-compra{background:rgba(46,116,201,.22);color:#93c5fd;border-color:rgba(46,116,201,.4)}
+.status-badge.b-entregue{background:rgba(16,185,129,.28);color:#6ee7b7;border-color:rgba(16,185,129,.5)}
+.status-badge.b-rejeitado{background:rgba(148,163,184,.16);color:#cbd5e1;border-color:rgba(148,163,184,.3)}
 .ped-v2 .ped-top{
   display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
   padding:14px 16px 0;
@@ -4645,16 +4710,19 @@ function lojaColorIdx(lojaId){
 function renderPedidoCardV2(p, opts={}){
   const podeEditar = !!opts.podeEditar;
   const modo = opts.modo || 'gestao'; // 'colab' | 'gestao'
-  const prio = prioInfo(p.prioridade || 'Médio');
-  const cat = catInfo(p.categoria || detectarCategoria(p.itens, p.observacao));
-  const sla = calcularSLA(p);
   const totalItens = p.itens.reduce((s,i)=>s+(i.quantidade||0),0);
-  const statusCls = { 'Pendente':'amber','Aprovado':'blue','Em compra':'blue','Entregue':'green','Rejeitado':'red' }[p.status] || 'grey';
-  const ringCls = prio.cls === 'critico' ? 'urg' :
-                  prio.cls === 'alto'    ? 'high' :
-                  prio.cls === 'medio'   ? 'med' :
-                  p.status === 'Aprovado' ? 'aprovado' :
-                  p.status === 'Rejeitado' ? 'rejeitado' : '';
+
+  // Status define o visual do card inteiro
+  const statusKey = (p.status||'Pendente').toLowerCase().replace(/\s+/g,'-');
+  const statusCls = 'st-' + statusKey;
+  const statusInfo = {
+    'Pendente':   { label:'Aguardando aprovação', cls:'b-pendente',  icon:'clock' },
+    'Aprovado':   { label:'Aprovado',             cls:'b-aprovado',  icon:'check-circle' },
+    'Em compra':  { label:'Em compra',            cls:'b-em-compra', icon:'shopping-cart' },
+    'Entregue':   { label:'Entregue',             cls:'b-entregue',  icon:'package-check' },
+    'Rejeitado':  { label:'Rejeitado',            cls:'b-rejeitado', icon:'x-circle' },
+  }[p.status] || { label:p.status||'—', cls:'b-pendente', icon:'circle' };
+
   const anexos = (p.anexos||[]);
   const cIdx = lojaColorIdx(p.lojaId);
 
@@ -4684,7 +4752,7 @@ function renderPedidoCardV2(p, opts={}){
     quickActions += `<button class="qbtn" onclick="abrirDetalhePedido('${p.id}')"><i data-lucide="eye"></i></button>`;
   }
 
-  return `<div class="ped-v2 ${ringCls}">
+  return `<div class="ped-v2 ${statusCls}">
     <div class="ped-top">
       <div class="ped-store">
         <div class="ped-store-ic c${cIdx}"><i data-lucide="store"></i></div>
@@ -4693,20 +4761,15 @@ function renderPedidoCardV2(p, opts={}){
           <div class="ped-store-loc">${escapeHtml(p.lojaLocal||'')}</div>
         </div>
       </div>
-      <div class="ped-top-meta">
-        <span class="status-pill ${statusCls}">${escapeHtml(p.status)}</span>
-        ${(p.status==='Pendente'||p.status==='Aprovado') && sla ? `<span class="sla ${sla.cls}"><i data-lucide="timer"></i>${escapeHtml(sla.texto)}</span>` : ''}
-      </div>
     </div>
 
     <div class="ped-tags">
-      <span class="prio ${prio.cls}"><i data-lucide="${prio.icon}"></i>${prio.label}</span>
-      <span class="cat-tag ${cat.cls}"><i data-lucide="${cat.icon}"></i>${escapeHtml(cat.key)}</span>
+      <span class="status-badge ${statusInfo.cls}"><i data-lucide="${statusInfo.icon}"></i>${statusInfo.label}</span>
       ${anexos.length ? `<span class="anexo-chip"><i data-lucide="paperclip"></i>${anexos.length} anexo${anexos.length>1?'s':''}</span>` : ''}
     </div>
 
     <div class="ped-meta">
-      <span><i data-lucide="calendar"></i>${fmt.date(p.data)}</span>
+      <span><i data-lucide="calendar"></i>${(() => { const d=new Date(p.data); return isNaN(d) ? fmt.date(p.data) : `${MES_NOME[d.getMonth()]} / ${d.getFullYear()}`; })()}</span>
       <span class="sep"></span>
       <span><i data-lucide="user"></i>${escapeHtml(p.solicitante)}</span>
       <span class="sep"></span>
