@@ -2291,12 +2291,11 @@ textarea.fld{resize:vertical;line-height:1.5}
     </div>
 
     <div id="adminLoginBox" class="admin-login-box hidden">
-      <input type="password" id="adminPass" placeholder="Senha da gestão" onkeydown="if(event.key==='Enter')entrarComoGestao('Administrador')" />
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="btn gold" style="flex:1" onclick="entrarComoGestao('Administrador')">Administrador</button>
-        <button class="btn" style="flex:1" onclick="entrarComoGestao('Diretoria')">Diretoria</button>
-      </div>
-      <div class="login-hint" style="margin-top:12px">Senha padrão: <code>solys2026</code></div>
+      <input type="password" id="adminPass" placeholder="Senha da diretoria" onkeydown="if(event.key==='Enter')entrarComoGestao('Diretoria')" />
+      <button class="btn gold" style="width:100%;margin-top:10px" onclick="entrarComoGestao('Diretoria')">
+        <i data-lucide="shield" style="width:14px;height:14px;display:inline-block;vertical-align:-2px;margin-right:6px"></i>
+        Entrar como Diretoria
+      </button>
     </div>
   </div>
 </div>
@@ -3224,8 +3223,8 @@ async function entrarComoLoja(lojaId) {
 
 async function entrarComoGestao(role) {
   const pass = document.getElementById('adminPass').value;
-  if (pass !== 'solys2026') { toast('Acesso negado','Senha incorreta','error'); return; }
-  const u = state.users.find(x => x.role === role);
+  if (pass !== 'Solys@2027#k') { toast('Acesso negado','Senha incorreta','error'); return; }
+  const u = state.users.find(x => x.role === role) || state.users.find(x => x.role === 'Administrador');
   if (!u) { toast('Erro',`Nenhum usuário ${role} cadastrado`,'error'); return; }
   state.user = u;
   await Storage.set('solys:session', { tipo:'user', userId: u.id, at: new Date().toISOString() });
