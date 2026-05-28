@@ -5502,10 +5502,10 @@ function baixarPedidoWord(id){
 
   const html = `
 <!DOCTYPE html>
-<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:v="urn:schemas-microsoft-com:vml" xmlns="http://www.w3.org/TR/REC-html40">
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
 <meta charset="utf-8" />
-<title>${escapeHtml(proto)} · ${escapeHtml(p.lojaNome)}</title>
+<title>${escapeHtml(proto)} - ${escapeHtml(p.lojaNome)}</title>
 <!--[if gte mso 9]>
 <xml>
   <w:WordDocument>
@@ -5516,178 +5516,200 @@ function baixarPedidoWord(id){
 </xml>
 <![endif]-->
 <style>
-  @page { size: A4; margin: 1.8cm 1.8cm 2cm 1.8cm; mso-header-margin: .5in; mso-footer-margin: .5in; }
-  body { font-family: 'Calibri', Arial, sans-serif; color:#1f2937; font-size:10.5pt; }
+  @page { size: A4; margin: 2.5cm 2.2cm 2.2cm 2.2cm; }
+  body {
+    font-family: 'Calibri', Arial, sans-serif;
+    color:#000;
+    font-size:11pt;
+    line-height:1.45;
+  }
   table { border-collapse: collapse; }
-  /* === BANDEIRA DA MARCA === */
-  .brand-bar { width:100%; border-collapse:collapse; margin-bottom:0; }
-  .brand-bar td { padding:0; height:6pt; }
-  .brand-bar .gold { background:#C89B3C; width:30%; }
-  .brand-bar .navy { background:#0A3D7C; width:55%; }
-  .brand-bar .gold2{ background:#C89B3C; width:15%; }
-  /* === HEADER === */
-  .head { width:100%; border-collapse:collapse; margin-top:14pt; margin-bottom:0; }
-  .head .logo-cell {
-    width:62%; padding:0; vertical-align:top;
+
+  /* === CABEÇALHO === */
+  .header {
+    text-align:center;
+    padding-bottom:14pt;
+    border-bottom: 2pt solid #0A3D7C;
+    margin-bottom: 4pt;
   }
-  .head .brand { font-family:'Arial Black','Arial',sans-serif; font-size:30pt; font-weight:900; color:#0A3D7C; letter-spacing:-1pt; margin:0; line-height:1; }
-  .head .sub { font-size:8.5pt; color:#C89B3C; letter-spacing:4pt; text-transform:uppercase; font-weight:700; margin-top:3pt; }
-  .head .doc-cell {
-    width:38%; text-align:right; padding:0; vertical-align:top;
+  .brand-name {
+    font-family:'Arial Black','Arial',sans-serif;
+    font-size: 28pt; font-weight:900;
+    color:#0A3D7C; letter-spacing:6pt;
+    margin:0; line-height:1;
   }
-  .doc-type { display:inline-block; background:#0A3D7C; color:#fff; padding:5pt 14pt; font-size:9pt; font-weight:700; letter-spacing:2pt; text-transform:uppercase; }
-  .doc-proto { font-family:'Consolas','Courier New',monospace; font-size:11pt; color:#0A3D7C; font-weight:700; margin-top:6pt; }
-  .doc-issue { font-size:8.5pt; color:#6b7280; margin-top:2pt; }
-  .head-divider { border-bottom: 2pt solid #0A3D7C; margin: 12pt 0 0 0; height:0; line-height:0; }
-  .head-divider-thin { border-bottom: 0.5pt solid #C89B3C; margin: 2pt 0 14pt 0; height:0; line-height:0; }
+  .brand-tag {
+    font-size: 8.5pt;
+    color:#000;
+    letter-spacing: 4pt;
+    margin-top: 5pt;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .gold-line {
+    border-bottom: 0.5pt solid #C89B3C;
+    margin: 0 0 22pt 0;
+    height:0; line-height:0;
+  }
+
+  /* === TÍTULO DO DOCUMENTO === */
+  .doc-title {
+    text-align:center;
+    margin-bottom: 24pt;
+  }
+  .doc-title h1 {
+    font-size: 14pt; font-weight:700;
+    color:#000; letter-spacing: 3pt;
+    margin: 0;
+    text-transform: uppercase;
+  }
+  .doc-title .proto {
+    font-size: 10pt; color:#444;
+    margin-top: 6pt;
+    font-family: 'Calibri', Arial, sans-serif;
+  }
 
   /* === SEÇÕES === */
   h2.sec {
-    font-size: 10pt; font-weight:700;
+    font-size: 11pt;
+    font-weight:700;
     color:#0A3D7C;
-    margin: 18pt 0 8pt;
-    padding: 4pt 0 4pt 10pt;
-    border-left: 3pt solid #C89B3C;
-    background:#f7f9fc;
-    text-transform:uppercase; letter-spacing:1.6pt;
+    margin: 18pt 0 10pt;
+    padding-bottom: 4pt;
+    border-bottom: 1pt solid #0A3D7C;
+    text-transform: uppercase;
+    letter-spacing: 1.5pt;
   }
 
-  /* === META BLOCK === */
-  .meta { width:100%; border-collapse:collapse; }
-  .meta td { padding: 6pt 10pt; font-size:10pt; vertical-align:top; }
-  .meta .lbl {
-    width:25%; background:#0A3D7C; color:#fff;
-    font-weight:700; font-size:8.5pt; letter-spacing:1.2pt; text-transform:uppercase;
-    border-bottom:1pt solid rgba(255,255,255,.12);
-  }
-  .meta .val {
-    width:25%; background:#fff; color:#111827; font-weight:500;
-    border:1pt solid #e5e7eb;
-  }
-
-  /* === STATUS PILL === */
-  .status-pill { display:inline-block; padding:4pt 12pt; font-size:9pt; font-weight:700; letter-spacing:1.2pt; text-transform:uppercase; border:1pt solid; }
-  .status-Pendente   { background:#fef2f2; color:#b91c1c; border-color:#fca5a5; }
-  .status-Aprovado   { background:#f0fdf4; color:#15803d; border-color:#86efac; }
-  .status-Em-compra  { background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; }
-  .status-Entregue   { background:#ecfdf5; color:#065f46; border-color:#34d399; }
-  .status-Rejeitado  { background:#f9fafb; color:#4b5563; border-color:#d1d5db; }
+  /* === DADOS DO PEDIDO === */
+  .info { width:100%; }
+  .info td { padding: 5pt 0; font-size: 11pt; vertical-align: top; }
+  .info .lbl { width: 32%; color:#444; font-weight:600; }
+  .info .val { color:#000; }
+  .info .val b { color:#000; }
 
   /* === TABELA DE ITENS === */
-  table.items { width:100%; border-collapse:collapse; margin-top:6pt; border:1pt solid #0A3D7C; }
+  table.items {
+    width:100%;
+    border-top: 1pt solid #0A3D7C;
+    border-bottom: 1pt solid #0A3D7C;
+    margin-top: 4pt;
+  }
   table.items th {
-    background:#0A3D7C; color:#fff;
-    text-align:left; padding:7pt 10pt;
-    font-size:9pt; font-weight:700; letter-spacing:1.2pt; text-transform:uppercase;
-    border-right:1pt solid rgba(255,255,255,.1);
+    text-align:left;
+    padding: 7pt 8pt;
+    font-size: 10pt;
+    font-weight: 700;
+    color: #0A3D7C;
+    border-bottom: 1pt solid #0A3D7C;
+    text-transform: uppercase;
+    letter-spacing: 1pt;
   }
-  table.items th:last-child { border-right:none; }
   table.items td {
-    padding:6pt 10pt; border-bottom:1pt solid #e5e7eb;
-    font-size:10.5pt; vertical-align:middle; color:#1f2937;
+    padding: 6pt 8pt;
+    font-size: 11pt;
+    color:#000;
+    border-bottom: 0.5pt solid #d4d8e0;
+    vertical-align: top;
   }
-  table.items tr:nth-child(even) td { background:#f9fafb; }
-  table.items tr:last-child td { border-bottom:none; }
-  table.items .num { text-align:center; width:32pt; color:#9ca3af; font-size:9pt; font-family:'Consolas','Courier New',monospace; }
-  table.items .qtd { text-align:center; font-weight:700; color:#C89B3C; width:50pt; font-size:11.5pt; font-family:'Consolas','Courier New',monospace; }
-  table.items .un  { text-align:center; color:#6b7280; width:50pt; font-size:9.5pt; }
-  table.items .desc{ font-weight:500; color:#111827; }
+  table.items tr:last-child td { border-bottom: none; }
+  table.items .num { text-align:center; width:34pt; color:#555; font-weight:500; }
+  table.items .qtd { text-align:center; width:50pt; font-weight:700; }
+  table.items .un  { text-align:center; width:48pt; color:#555; }
 
-  /* Footer de total dentro da tabela */
-  .items-total td {
-    background:#0A3D7C !important; color:#fff !important;
-    padding:8pt 10pt; font-weight:700; font-size:10.5pt;
-    border-top: 2pt solid #C89B3C; border-bottom:none !important;
+  .total-line {
+    margin-top: 10pt;
+    text-align: right;
+    font-size: 11pt;
+    color: #000;
   }
-  .items-total .tot-qtd { color:#C89B3C; font-size:12.5pt; font-family:'Consolas','Courier New',monospace; }
-  .items-total .tot-lbl { color:#fff; letter-spacing:1.5pt; text-transform:uppercase; font-size:9pt; }
+  .total-line b {
+    font-weight: 700;
+    color:#0A3D7C;
+  }
 
-  /* === BOXES === */
-  .obs-box { background:#fffbeb; border-left:3pt solid #C89B3C; padding:8pt 12pt; font-size:10.5pt; color:#3f3f46; font-style:italic; }
-  .resp-box { background:#eff6ff; border-left:3pt solid #2e74c9; padding:8pt 12pt; font-size:10.5pt; color:#1e3a5f; }
-  .resp-box b { display:block; color:#1e40af; font-style:normal; font-size:9pt; letter-spacing:1pt; text-transform:uppercase; margin-bottom:3pt; }
-
-  /* === APROVAÇÃO === */
-  .approval { width:100%; border-collapse:collapse; margin-top:8pt; border:1pt solid #e5e7eb; }
-  .approval td { padding:8pt 12pt; vertical-align:top; font-size:10pt; }
-  .approval .l { background:#f7f9fc; color:#0A3D7C; font-weight:700; font-size:8.5pt; letter-spacing:1.2pt; text-transform:uppercase; width:25%; }
-  .approval .v { color:#111827; }
+  /* === OBSERVAÇÃO / RESPOSTA === */
+  .text-box {
+    padding: 4pt 0 0;
+    font-size: 11pt;
+    color: #000;
+    line-height: 1.55;
+  }
 
   /* === ASSINATURAS === */
-  .signatures { margin-top:36pt; width:100%; }
-  .signatures td { width:50%; padding:0 14pt; text-align:center; vertical-align:bottom; }
-  .sign-line { border-top:1pt solid #111827; padding-top:6pt; font-size:10pt; font-weight:700; color:#111827; }
-  .sign-role { font-size:8pt; color:#6b7280; text-transform:uppercase; letter-spacing:2pt; margin-top:2pt; }
+  .signatures {
+    margin-top: 56pt;
+    width:100%;
+    page-break-inside: avoid;
+  }
+  .signatures td {
+    width: 45%;
+    padding: 0 14pt;
+    text-align:center;
+    vertical-align: bottom;
+  }
+  .signatures .gap { width:10%; }
+  .sign-line {
+    border-top: 0.75pt solid #000;
+    padding-top: 5pt;
+    font-size: 10.5pt;
+    color: #000;
+    font-weight: 600;
+  }
+  .sign-role {
+    font-size: 9pt;
+    color:#444;
+    margin-top: 2pt;
+  }
 
-  /* === HISTÓRICO === */
-  .hist { width:100%; border-collapse:collapse; margin-top:4pt; }
-  .hist td { padding: 5pt 8pt; font-size:9pt; border-bottom:1pt dashed #e5e7eb; vertical-align:top; }
-  .hist .h-date { color:#6b7280; width:25%; font-family:'Consolas','Courier New',monospace; }
-  .hist .h-act  { color:#1f2937; }
-  .hist .h-by   { color:#0A3D7C; font-weight:600; width:25%; }
-
-  /* === FOOTER === */
-  .footer { margin-top:24pt; padding-top:8pt; border-top:1pt solid #e5e7eb; font-size:8pt; color:#9ca3af; }
-  .footer-table { width:100%; border-collapse:collapse; }
-  .footer-table .l { text-align:left; }
-  .footer-table .r { text-align:right; }
+  /* === RODAPÉ === */
+  .footer {
+    margin-top: 40pt;
+    padding-top: 8pt;
+    border-top: 0.5pt solid #c5cad3;
+    font-size: 8.5pt;
+    color:#666;
+    text-align:center;
+    letter-spacing: 0.5pt;
+  }
   .footer b { color:#0A3D7C; }
 </style>
 </head>
 <body>
 
-<!-- BANDEIRA DA MARCA NO TOPO -->
-<table class="brand-bar"><tr><td class="gold"></td><td class="navy"></td><td class="gold2"></td></tr></table>
+<!-- CABEÇALHO -->
+<div class="header">
+  <p class="brand-name">SOLYS</p>
+  <p class="brand-tag">Gestão Administrativa</p>
+</div>
+<div class="gold-line"></div>
 
-<!-- HEADER: LOGO + PROTOCOLO -->
-<table class="head">
-  <tr>
-    <td class="logo-cell">
-      <p class="brand">SOLYS</p>
-      <p class="sub">Gestão Administrativa</p>
-    </td>
-    <td class="doc-cell">
-      <div class="doc-type">Pedido de Compras</div>
-      <div class="doc-proto">Nº ${escapeHtml(proto)}</div>
-      <div class="doc-issue">Emitido em ${dataEmissao} às ${horaEmissao}</div>
-    </td>
-  </tr>
-</table>
-<div class="head-divider"></div>
-<div class="head-divider-thin"></div>
+<!-- TÍTULO + PROTOCOLO -->
+<div class="doc-title">
+  <h1>Pedido de Compras</h1>
+  <div class="proto">Protocolo: <b>${escapeHtml(proto)}</b></div>
+</div>
 
-<!-- INFORMAÇÕES -->
-<h2 class="sec">Informações do Pedido</h2>
-<table class="meta">
-  <tr>
-    <td class="lbl">Unidade Solicitante</td>
-    <td class="val">${escapeHtml(p.lojaNome)}</td>
-    <td class="lbl">Localidade</td>
-    <td class="val">${escapeHtml(p.lojaLocal||'—')}</td>
-  </tr>
-  <tr>
-    <td class="lbl">Solicitante</td>
-    <td class="val">${escapeHtml(p.solicitante||'—')}</td>
-    <td class="lbl">Mês de Referência</td>
-    <td class="val"><b>${mes} / ${ano}</b></td>
-  </tr>
-  <tr>
-    <td class="lbl">Data de Emissão</td>
-    <td class="val">${dataEmissao} · ${horaEmissao}</td>
-    <td class="lbl">Status Atual</td>
-    <td class="val"><span class="status-pill status-${(p.status||'').replace(' ','-')}">${escapeHtml(p.status||'')}</span></td>
-  </tr>
+<!-- DADOS -->
+<h2 class="sec">Dados do Pedido</h2>
+<table class="info">
+  <tr><td class="lbl">Unidade Solicitante:</td><td class="val"><b>${escapeHtml(p.lojaNome)}</b></td></tr>
+  <tr><td class="lbl">Localidade:</td><td class="val">${escapeHtml(p.lojaLocal||'—')}</td></tr>
+  <tr><td class="lbl">Solicitante:</td><td class="val">${escapeHtml(p.solicitante||'—')}</td></tr>
+  <tr><td class="lbl">Mês de Referência:</td><td class="val"><b>${mes} de ${ano}</b></td></tr>
+  <tr><td class="lbl">Data de Emissão:</td><td class="val">${dataEmissao} às ${horaEmissao}</td></tr>
+  <tr><td class="lbl">Situação:</td><td class="val"><b>${escapeHtml(p.status||'—')}</b></td></tr>
 </table>
 
 <!-- PRODUTOS -->
-<h2 class="sec">Relação de Produtos Solicitados</h2>
+<h2 class="sec">Relação de Produtos</h2>
 <table class="items">
   <thead>
     <tr>
-      <th style="width:32pt;text-align:center">Item</th>
-      <th style="width:50pt;text-align:center">Qtd</th>
-      <th style="width:50pt;text-align:center">Un</th>
-      <th>Descrição</th>
+      <th style="width:34pt;text-align:center">Item</th>
+      <th style="width:50pt;text-align:center">Qtd.</th>
+      <th style="width:48pt;text-align:center">Un.</th>
+      <th>Descrição do Produto</th>
     </tr>
   </thead>
   <tbody>
@@ -5695,42 +5717,20 @@ function baixarPedidoWord(id){
       <td class="num">${String(i+1).padStart(2,'0')}</td>
       <td class="qtd">${it.quantidade}</td>
       <td class="un">${escapeHtml(it.unidade||'un')}</td>
-      <td class="desc">${escapeHtml(it.descricao)}</td>
+      <td>${escapeHtml(it.descricao)}</td>
     </tr>`).join('')}
-    <tr class="items-total">
-      <td colspan="2" style="text-align:center" class="tot-qtd">${totalUn}</td>
-      <td colspan="2" class="tot-lbl">Total de Unidades · ${p.itens.length} produto${p.itens.length>1?'s':''}</td>
-    </tr>
   </tbody>
 </table>
+<p class="total-line">Total de produtos: <b>${p.itens.length}</b> &nbsp;·&nbsp; Total de unidades: <b>${totalUn}</b></p>
 
 ${p.observacao ? `
   <h2 class="sec">Observações</h2>
-  <div class="obs-box">${escapeHtml(p.observacao)}</div>
+  <div class="text-box">${escapeHtml(p.observacao)}</div>
 ` : ''}
 
 ${p.respostaAdmin ? `
   <h2 class="sec">Resposta da Diretoria</h2>
-  <div class="resp-box"><b>${escapeHtml(p.respondidoPor||'Diretoria')}</b>${escapeHtml(p.respostaAdmin)}</div>
-` : ''}
-
-<!-- APROVAÇÃO -->
-<h2 class="sec">Status de Aprovação</h2>
-<table class="approval">
-  <tr><td class="l">Aprovado / Tramitado por</td><td class="v">${escapeHtml(p.respondidoPor || '— aguardando análise —')}</td></tr>
-  <tr><td class="l">Situação Atual</td><td class="v"><span class="status-pill status-${(p.status||'').replace(' ','-')}">${escapeHtml(p.status||'')}</span></td></tr>
-  <tr><td class="l">Última atualização</td><td class="v">${(p.historico||[]).length ? fmt.datetime((p.historico||[]).slice(-1)[0].at) : dataEmissao}</td></tr>
-</table>
-
-${movs.length ? `
-  <h2 class="sec">Histórico de Tramitação</h2>
-  <table class="hist">
-    ${movs.slice().reverse().map(h => `<tr>
-      <td class="h-date">${fmt.datetime(h.at)}</td>
-      <td class="h-by">${escapeHtml(h.by)}</td>
-      <td class="h-act">${escapeHtml(h.action)}</td>
-    </tr>`).join('')}
-  </table>
+  <div class="text-box"><b>${escapeHtml(p.respondidoPor||'Diretoria')}:</b> ${escapeHtml(p.respostaAdmin)}</div>
 ` : ''}
 
 <!-- ASSINATURAS -->
@@ -5738,21 +5738,19 @@ ${movs.length ? `
   <tr>
     <td>
       <div class="sign-line">${escapeHtml(p.solicitante||'')}</div>
-      <div class="sign-role">Solicitante · ${escapeHtml(p.lojaNome)}</div>
+      <div class="sign-role">Solicitante &mdash; ${escapeHtml(p.lojaNome)}</div>
     </td>
+    <td class="gap"></td>
     <td>
       <div class="sign-line">${escapeHtml(p.respondidoPor||'')}</div>
-      <div class="sign-role">Aprovação · Diretoria SOLYS</div>
+      <div class="sign-role">Diretoria &mdash; SOLYS</div>
     </td>
   </tr>
 </table>
 
-<!-- FOOTER -->
+<!-- RODAPÉ -->
 <div class="footer">
-  <table class="footer-table"><tr>
-    <td class="l"><b>SOLYS</b> · Gestão Administrativa · Central de Compras</td>
-    <td class="r">Documento gerado em ${new Date().toLocaleString('pt-BR')} · <b>${escapeHtml(proto)}</b></td>
-  </tr></table>
+  <b>SOLYS</b> &nbsp;·&nbsp; Gestão Administrativa &nbsp;·&nbsp; Documento emitido em ${new Date().toLocaleString('pt-BR')}
 </div>
 
 </body></html>`;
