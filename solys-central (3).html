@@ -1874,6 +1874,120 @@ textarea.fld{resize:vertical;line-height:1.5}
 .pd-hero .pd-info p{font-size:12px;color:var(--ink-300);margin-top:3px}
 .pd-hero .pd-tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 
+/* PD V2 — layout corporativo do detalhe */
+.pd-hero-v2{
+  display:flex;gap:14px;align-items:center;
+  padding:16px 18px;border-radius:14px;
+  background:linear-gradient(135deg, rgba(22,28,52,.7), rgba(13,17,32,.5));
+  border:1px solid rgba(255,255,255,.08);
+  margin-bottom:16px;
+}
+.pd-hero-v2 .pd-ic{
+  width:48px;height:48px;border-radius:12px;display:grid;place-items:center;
+  flex-shrink:0;
+}
+.pd-hero-v2 .pd-ic.c0{background:linear-gradient(135deg, rgba(200,155,60,.25),rgba(200,155,60,.05));color:var(--gold-400);border:1px solid rgba(200,155,60,.3)}
+.pd-hero-v2 .pd-ic.c1{background:linear-gradient(135deg, rgba(46,116,201,.25),rgba(46,116,201,.05));color:#7eb3f0;border:1px solid rgba(46,116,201,.3)}
+.pd-hero-v2 .pd-ic.c2{background:linear-gradient(135deg, rgba(52,211,153,.25),rgba(52,211,153,.05));color:#86efac;border:1px solid rgba(52,211,153,.3)}
+.pd-hero-v2 .pd-ic.c3{background:linear-gradient(135deg, rgba(167,139,250,.25),rgba(167,139,250,.05));color:#c4b5fd;border:1px solid rgba(167,139,250,.3)}
+.pd-hero-v2 .pd-ic.c4{background:linear-gradient(135deg, rgba(244,114,182,.25),rgba(244,114,182,.05));color:#f9a8d4;border:1px solid rgba(244,114,182,.3)}
+.pd-hero-v2 .pd-ic.c5{background:linear-gradient(135deg, rgba(249,115,22,.25),rgba(249,115,22,.05));color:#fdba74;border:1px solid rgba(249,115,22,.3)}
+.pd-hero-v2 .pd-ic.c6{background:linear-gradient(135deg, rgba(96,165,250,.25),rgba(96,165,250,.05));color:#93c5fd;border:1px solid rgba(96,165,250,.3)}
+.pd-hero-v2 .pd-ic svg{width:22px;height:22px}
+.pd-hero-v2 .pd-info{flex:1;min-width:0}
+.pd-hero-v2 .pd-info h3{font-family:'Outfit';font-size:17px;font-weight:600;color:#fff;letter-spacing:-.02em;line-height:1.1}
+.pd-hero-v2 .pd-info p{font-size:11px;color:var(--ink-300);margin-top:2px;text-transform:uppercase;letter-spacing:.1em;font-weight:500}
+.pd-hero-v2 .pd-tags{margin-top:9px}
+
+.pd-meta-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:1px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.06);
+  border-radius:12px;overflow:hidden;margin-bottom:18px;
+}
+.pd-meta-cell{
+  padding:11px 14px;background:rgba(13,17,32,.6);
+  display:flex;flex-direction:column;gap:3px;
+}
+.pd-meta-cell .lbl{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-400)}
+.pd-meta-cell .val{font-size:13px;color:#fff;font-weight:500}
+.pd-meta-cell .val b{color:var(--gold-300);font-weight:700}
+
+.pd-section-h{
+  font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-300);margin:18px 0 8px;display:flex;align-items:center;gap:8px;
+}
+.pd-section-h::after{content:'';flex:1;height:1px;background:linear-gradient(90deg, var(--border), transparent)}
+
+.pd-itens-box{
+  background:rgba(0,0,0,.22);
+  border:1px solid rgba(255,255,255,.05);
+  border-radius:11px;overflow:hidden;
+  max-height:320px;overflow-y:auto;
+}
+.pd-itens-head{
+  display:grid;grid-template-columns:62px 56px 1fr;gap:0;
+  padding:8px 14px;background:rgba(255,255,255,.03);
+  font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-400);
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.pd-item-row{
+  display:grid;grid-template-columns:62px 56px 1fr;gap:0;
+  padding:9px 14px;font-size:13px;color:var(--ink-100);
+  border-bottom:1px solid rgba(255,255,255,.03);
+  align-items:center;transition:background .12s;
+}
+.pd-item-row:hover{background:rgba(255,255,255,.025)}
+.pd-item-row:last-child{border-bottom:none}
+.pd-it-qtd{
+  font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold-400);
+  font-variant-numeric:tabular-nums;
+}
+.pd-it-un{font-size:11px;color:var(--ink-300);text-transform:lowercase}
+.pd-it-desc{color:#fff;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.pd-obs{
+  background:rgba(200,155,60,.06);border-left:3px solid var(--gold-500);
+  padding:10px 13px;border-radius:0 9px 9px 0;
+  font-size:13px;color:var(--ink-100);font-style:italic;
+  display:flex;gap:9px;align-items:flex-start;
+}
+.pd-obs svg{width:13px;height:13px;color:var(--gold-400);margin-top:3px;flex-shrink:0}
+
+.pd-resp{
+  background:rgba(46,116,201,.06);border-left:3px solid var(--navy-500);
+  padding:11px 13px;border-radius:0 9px 9px 0;
+  font-size:13px;color:var(--ink-100);
+  display:flex;gap:9px;align-items:flex-start;
+}
+.pd-resp svg{width:13px;height:13px;color:#7eb3f0;margin-top:3px;flex-shrink:0}
+.pd-resp b{display:block;font-size:11px;font-weight:700;color:#7eb3f0;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.pd-resp > div{flex:1}
+.pd-resp span{display:block;color:var(--ink-100)}
+
+.pd-timeline{
+  display:flex;flex-direction:column;gap:2px;
+  padding:6px;
+  background:rgba(0,0,0,.18);border:1px solid var(--border);border-radius:10px;
+}
+.pd-tl-item{display:flex;gap:10px;padding:7px 8px;align-items:flex-start}
+.pd-tl-dot{
+  width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:5px;
+  box-shadow:0 0 0 3px rgba(0,0,0,.4);
+}
+.pd-tl-dot.gold{background:var(--gold-500);box-shadow:0 0 0 3px rgba(0,0,0,.4), 0 0 6px var(--gold-500)}
+.pd-tl-dot.green{background:#34d399;box-shadow:0 0 0 3px rgba(0,0,0,.4), 0 0 6px #34d399}
+.pd-tl-dot.red{background:#ef4444;box-shadow:0 0 0 3px rgba(0,0,0,.4), 0 0 6px #ef4444}
+.pd-tl-dot.blue{background:#7eb3f0;box-shadow:0 0 0 3px rgba(0,0,0,.4), 0 0 6px #7eb3f0}
+.pd-tl-body{flex:1;min-width:0}
+.pd-tl-title{font-size:12.5px;color:var(--ink-100);line-height:1.4}
+.pd-tl-title b{color:#fff;font-weight:600}
+.pd-tl-meta{font-size:10.5px;color:var(--ink-400);margin-top:1px;font-family:'JetBrains Mono',monospace}
+
+@media (max-width:600px){
+  .pd-meta-grid{grid-template-columns:1fr}
+  .pd-hero-v2{flex-direction:column;align-items:flex-start;text-align:left}
+}
+
 /* Sound mute toggle no header */
 .mute-btn{position:relative}
 .mute-btn.muted::after{
@@ -5497,45 +5611,82 @@ ${p.respostaAdmin ? `
 async function abrirDetalhePedido(id){
   const p = state.pedidos.find(x=>x.id===id);
   if (!p) return;
-  const prio = prioInfo(p.prioridade||'Médio');
-  const cat = catInfo(p.categoria||detectarCategoria(p.itens,p.observacao));
-  const sla = calcularSLA(p);
+  const totalUn = p.itens.reduce((s,i)=>s+(i.quantidade||0),0);
+  const statusInfo = {
+    'Pendente':   { label:'Aguardando aprovação', cls:'b-pendente',  icon:'clock' },
+    'Aprovado':   { label:'Aprovado',             cls:'b-aprovado',  icon:'check-circle' },
+    'Em compra':  { label:'Em compra',            cls:'b-em-compra', icon:'shopping-cart' },
+    'Entregue':   { label:'Entregue',             cls:'b-entregue',  icon:'package-check' },
+    'Rejeitado':  { label:'Rejeitado',            cls:'b-rejeitado', icon:'x-circle' },
+  }[p.status] || { label:p.status, cls:'b-pendente', icon:'circle' };
+  const cIdx = lojaColorIdx(p.lojaId);
+
   showModal({
     title: `Pedido · ${p.lojaNome}`,
     size:'lg',
     body: `
-      <div class="pd-hero">
-        <div class="pd-ic"><i data-lucide="store"></i></div>
-        <div class="pd-info" style="flex:1">
+      <div class="pd-hero-v2">
+        <div class="pd-ic c${cIdx}"><i data-lucide="store"></i></div>
+        <div class="pd-info">
           <h3>${escapeHtml(p.lojaNome)}</h3>
-          <p>${escapeHtml(p.lojaLocal||'')} · ${escapeHtml(p.solicitante)} · ${fmt.date(p.data)}</p>
-          <div class="pd-tags">
-            <span class="prio ${prio.cls}"><i data-lucide="${prio.icon}"></i>${prio.label}</span>
-            <span class="cat-tag ${cat.cls}"><i data-lucide="${cat.icon}"></i>${cat.key}</span>
-            ${sla ? `<span class="sla ${sla.cls}"><i data-lucide="timer"></i>${escapeHtml(sla.texto)}</span>` : ''}
-            <span class="status-pill ${({'Pendente':'amber','Aprovado':'blue','Em compra':'blue','Entregue':'green','Rejeitado':'red'}[p.status]||'grey')}">${p.status}</span>
-          </div>
+          <p>${escapeHtml(p.lojaLocal||'')}</p>
+          <div class="pd-tags"><span class="status-badge ${statusInfo.cls}"><i data-lucide="${statusInfo.icon}"></i>${statusInfo.label}</span></div>
         </div>
       </div>
-      <div style="margin-bottom:14px">
-        <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Itens (${p.itens.length})</div>
-        <div style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;background:rgba(0,0,0,.16);padding:12px;border-radius:10px">
-          ${p.itens.map(it=>`<div class="ped-li"><span class="qq">${it.quantidade}${it.unidade&&it.unidade!=='un'?' '+escapeHtml(it.unidade):''}</span><span>${escapeHtml(it.descricao)}</span></div>`).join('')}
-        </div>
+
+      <div class="pd-meta-grid">
+        <div class="pd-meta-cell"><span class="lbl">Solicitante</span><span class="val">${escapeHtml(p.solicitante||'—')}</span></div>
+        <div class="pd-meta-cell"><span class="lbl">Mês de referência</span><span class="val">${MES_NOME[isoToMesIdx(p.data)]} / ${isoToAno(p.data)}</span></div>
+        <div class="pd-meta-cell"><span class="lbl">Enviado em</span><span class="val">${fmt.datetime(p.criadoEm)}</span></div>
+        <div class="pd-meta-cell"><span class="lbl">Total</span><span class="val">${p.itens.length} itens · <b>${totalUn} un.</b></span></div>
       </div>
-      ${p.observacao ? `<div style="margin-bottom:12px"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Observação</div><div style="padding:11px 13px;background:rgba(255,255,255,.03);border-radius:9px;font-size:13px;font-style:italic">${escapeHtml(p.observacao)}</div></div>` : ''}
-      ${(p.anexos||[]).length ? `<div style="margin-bottom:12px"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Anexos</div><div style="display:flex;flex-wrap:wrap;gap:6px">${p.anexos.map(a=>`<span class="anexo-chip"><i data-lucide="paperclip"></i>${escapeHtml(a.nome)}</span>`).join('')}</div></div>` : ''}
-      ${p.respostaAdmin ? `<div class="ped-msg" style="margin:0 0 12px"><i data-lucide="corner-down-right"></i> <span><b>Gestão (${escapeHtml(p.respondidoPor||'')}):</b> ${escapeHtml(p.respostaAdmin)}</span></div>` : ''}
-      <div>
-        <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Linha do tempo</div>
-        <div class="timeline" style="padding:0">
-          ${(p.historico||[]).slice().reverse().map(h=>`
-            <div class="tl-item">
-              <div class="tl-dot ${h.action&&h.action.includes('Rejeitado')?'red':h.action&&h.action.includes('Aprovado')?'green':h.action&&h.action.includes('Entregue')?'green':'gold'}"><i data-lucide="${h.action&&h.action.startsWith('status')?'arrow-right':'circle'}"></i></div>
-              <div class="tl-body"><div class="tl-title"><strong>${escapeHtml(h.by)}</strong> · ${escapeHtml(h.action)}</div><div class="tl-meta">${fmt.datetime(h.at)}</div></div>
+
+      <div class="pd-section-h">Produtos solicitados</div>
+      <div class="pd-itens-box">
+        <div class="pd-itens-head"><div>Qtd</div><div>Un</div><div>Descrição</div></div>
+        ${p.itens.map((it,i)=>`<div class="pd-item-row">
+          <div class="pd-it-qtd">${it.quantidade}</div>
+          <div class="pd-it-un">${escapeHtml(it.unidade||'un')}</div>
+          <div class="pd-it-desc">${escapeHtml(it.descricao)}</div>
+        </div>`).join('')}
+      </div>
+
+      ${p.observacao ? `
+        <div class="pd-section-h">Observação</div>
+        <div class="pd-obs"><i data-lucide="message-square"></i> ${escapeHtml(p.observacao)}</div>
+      ` : ''}
+
+      ${(p.anexos||[]).length ? `
+        <div class="pd-section-h">Anexos</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">${p.anexos.map(a=>`<span class="anexo-chip"><i data-lucide="paperclip"></i>${escapeHtml(a.nome)}</span>`).join('')}</div>
+      ` : ''}
+
+      ${p.respostaAdmin ? `
+        <div class="pd-section-h">Resposta da Diretoria</div>
+        <div class="pd-resp"><i data-lucide="corner-down-right"></i><div><b>${escapeHtml(p.respondidoPor||'Diretoria')}</b><span>${escapeHtml(p.respostaAdmin)}</span></div></div>
+      ` : ''}
+
+      <div class="pd-section-h">Linha do tempo</div>
+      <div class="pd-timeline">
+        ${(p.historico||[]).slice().reverse().map(h=>{
+          const dot = h.action?.includes('Rejeitado') ? 'red'
+                    : h.action?.includes('Aprovado')  ? 'green'
+                    : h.action?.includes('Entregue')  ? 'green'
+                    : h.action?.includes('compra')    ? 'blue'
+                    : 'gold';
+          return `<div class="pd-tl-item">
+            <div class="pd-tl-dot ${dot}"></div>
+            <div class="pd-tl-body">
+              <div class="pd-tl-title"><b>${escapeHtml(h.by)}</b> · ${escapeHtml(h.action)}</div>
+              <div class="pd-tl-meta">${fmt.datetime(h.at)}</div>
             </div>
-          `).join('')}
-        </div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;flex-wrap:wrap">
+        ${state.user?.role !== 'Colaborador' ? `<button class="btn" onclick="closeModal();baixarPedidoWord('${p.id}')"><i data-lucide="file-text"></i>Baixar Word</button>` : ''}
+        ${state.user?.role !== 'Colaborador' && p.status==='Pendente' ? `<button class="btn gold" onclick="closeModal();editarPedidoGestao('${p.id}')"><i data-lucide="edit-3"></i>Editar</button>` : ''}
       </div>
     `,
     confirmText:'Fechar', onConfirm:()=>true
