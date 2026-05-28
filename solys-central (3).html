@@ -5483,20 +5483,29 @@ async function salvarEdicaoGestao(id){
   renderRoute();
 }
 
-/* BAIXAR Word — gera .doc compatível com Word/LibreOffice via HTML */
+/* BAIXAR Word — documento corporativo padronizado (Word/LibreOffice) */
 function baixarPedidoWord(id){
   const p = state.pedidos.find(x => x.id === id);
   if (!p) return;
   const mes = MES_NOME[isoToMesIdx(p.data)];
   const ano = isoToAno(p.data);
+  const mesIdx = isoToMesIdx(p.data);
   const totalUn = p.itens.reduce((s,i)=>s+(i.quantidade||0),0);
+
+  // Número de protocolo: SOL-AAAA-MM-XXXX (4 últimos dígitos do id em base36)
+  const proto = `SOL-${ano}-${String(mesIdx+1).padStart(2,'0')}-${(p.id||'').replace(/-/g,'').slice(-6).toUpperCase()}`;
+  const dataEmissao = new Date(p.criadoEm).toLocaleDateString('pt-BR');
+  const horaEmissao = new Date(p.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+  // Histórico de movimentação relevante (status changes)
+  const movs = (p.historico||[]).filter(h => (h.action||'').includes('→')).slice(-5);
 
   const html = `
 <!DOCTYPE html>
-<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:v="urn:schemas-microsoft-com:vml" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
 <meta charset="utf-8" />
-<title>Pedido · ${escapeHtml(p.lojaNome)}</title>
+<title>${escapeHtml(proto)} · ${escapeHtml(p.lojaNome)}</title>
 <!--[if gte mso 9]>
 <xml>
   <w:WordDocument>
@@ -5507,92 +5516,243 @@ function baixarPedidoWord(id){
 </xml>
 <![endif]-->
 <style>
-  @page { size: A4; margin: 2cm; }
-  body { font-family: 'Calibri', Arial, sans-serif; color:#1a1a1a; font-size:11pt; }
-  .header { border-bottom: 3px solid #0A3D7C; padding-bottom: 14px; margin-bottom: 22px; }
-  .brand { font-size: 24pt; font-weight: 700; color:#0A3D7C; letter-spacing:-0.5pt; margin:0; }
-  .brand-sub { font-size: 9pt; color:#666; text-transform:uppercase; letter-spacing:2pt; margin-top:2pt; }
-  .doc-title { font-size: 16pt; font-weight: 600; margin: 18pt 0 4pt; color:#0A3D7C; }
-  .doc-sub { color:#666; font-size:10pt; }
-  .meta-grid { width:100%; margin:14pt 0 18pt; border-collapse:collapse; }
-  .meta-grid td { padding: 7pt 10pt; font-size:10.5pt; border:1px solid #d5dce6; vertical-align:top; }
-  .meta-grid .lbl { background:#f3f6fb; color:#0A3D7C; font-weight:600; text-transform:uppercase; font-size:9pt; letter-spacing:0.6pt; width:30%; }
-  .status-box { display:inline-block; padding:4pt 12pt; border-radius:4pt; font-weight:700; font-size:9.5pt; letter-spacing:1pt; text-transform:uppercase; }
-  .status-Pendente   { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
-  .status-Aprovado   { background:#dcfce7; color:#166534; border:1px solid #86efac; }
-  .status-Em-compra  { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
-  .status-Entregue   { background:#bbf7d0; color:#14532d; border:1px solid #4ade80; }
-  .status-Rejeitado  { background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; }
-  h2.section { font-size: 12pt; font-weight:600; color:#0A3D7C; margin: 20pt 0 8pt; padding-bottom:4pt; border-bottom:1px solid #d5dce6; text-transform:uppercase; letter-spacing:1pt; }
-  table.items { width:100%; border-collapse:collapse; margin-top:6pt; }
-  table.items th { background:#0A3D7C; color:#fff; text-align:left; padding:8pt 10pt; font-size:10pt; font-weight:600; text-transform:uppercase; letter-spacing:0.5pt; }
-  table.items td { padding:7pt 10pt; border-bottom:1px solid #e5eaf2; font-size:10.5pt; vertical-align:middle; }
-  table.items tr:nth-child(even) td { background:#f9fbfd; }
-  table.items .qtd { text-align:center; font-weight:700; color:#0A3D7C; width:60pt; }
-  table.items .un  { text-align:center; color:#666; width:50pt; }
-  .totals { margin-top: 10pt; text-align:right; font-size:11pt; color:#0A3D7C; }
-  .totals b { font-size:13pt; }
-  .obs-box { background:#fffbeb; border-left:3px solid #C89B3C; padding:9pt 12pt; margin-top:10pt; font-size:10.5pt; color:#444; font-style:italic; }
-  .resposta-box { background:#f0f9ff; border-left:3px solid #2e74c9; padding:9pt 12pt; margin-top:10pt; font-size:10.5pt; color:#1e3a5f; }
-  .signatures { margin-top:48pt; width:100%; }
-  .signatures td { width:50%; padding:0 16pt; text-align:center; vertical-align:bottom; font-size:9.5pt; color:#666; }
-  .signatures .line { border-top:1px solid #1a1a1a; padding-top:5pt; }
-  .footer { margin-top:36pt; padding-top:10pt; border-top:1px solid #d5dce6; font-size:8.5pt; color:#888; text-align:center; }
+  @page { size: A4; margin: 1.8cm 1.8cm 2cm 1.8cm; mso-header-margin: .5in; mso-footer-margin: .5in; }
+  body { font-family: 'Calibri', Arial, sans-serif; color:#1f2937; font-size:10.5pt; }
+  table { border-collapse: collapse; }
+  /* === BANDEIRA DA MARCA === */
+  .brand-bar { width:100%; border-collapse:collapse; margin-bottom:0; }
+  .brand-bar td { padding:0; height:6pt; }
+  .brand-bar .gold { background:#C89B3C; width:30%; }
+  .brand-bar .navy { background:#0A3D7C; width:55%; }
+  .brand-bar .gold2{ background:#C89B3C; width:15%; }
+  /* === HEADER === */
+  .head { width:100%; border-collapse:collapse; margin-top:14pt; margin-bottom:0; }
+  .head .logo-cell {
+    width:62%; padding:0; vertical-align:top;
+  }
+  .head .brand { font-family:'Arial Black','Arial',sans-serif; font-size:30pt; font-weight:900; color:#0A3D7C; letter-spacing:-1pt; margin:0; line-height:1; }
+  .head .sub { font-size:8.5pt; color:#C89B3C; letter-spacing:4pt; text-transform:uppercase; font-weight:700; margin-top:3pt; }
+  .head .doc-cell {
+    width:38%; text-align:right; padding:0; vertical-align:top;
+  }
+  .doc-type { display:inline-block; background:#0A3D7C; color:#fff; padding:5pt 14pt; font-size:9pt; font-weight:700; letter-spacing:2pt; text-transform:uppercase; }
+  .doc-proto { font-family:'Consolas','Courier New',monospace; font-size:11pt; color:#0A3D7C; font-weight:700; margin-top:6pt; }
+  .doc-issue { font-size:8.5pt; color:#6b7280; margin-top:2pt; }
+  .head-divider { border-bottom: 2pt solid #0A3D7C; margin: 12pt 0 0 0; height:0; line-height:0; }
+  .head-divider-thin { border-bottom: 0.5pt solid #C89B3C; margin: 2pt 0 14pt 0; height:0; line-height:0; }
+
+  /* === SEÇÕES === */
+  h2.sec {
+    font-size: 10pt; font-weight:700;
+    color:#0A3D7C;
+    margin: 18pt 0 8pt;
+    padding: 4pt 0 4pt 10pt;
+    border-left: 3pt solid #C89B3C;
+    background:#f7f9fc;
+    text-transform:uppercase; letter-spacing:1.6pt;
+  }
+
+  /* === META BLOCK === */
+  .meta { width:100%; border-collapse:collapse; }
+  .meta td { padding: 6pt 10pt; font-size:10pt; vertical-align:top; }
+  .meta .lbl {
+    width:25%; background:#0A3D7C; color:#fff;
+    font-weight:700; font-size:8.5pt; letter-spacing:1.2pt; text-transform:uppercase;
+    border-bottom:1pt solid rgba(255,255,255,.12);
+  }
+  .meta .val {
+    width:25%; background:#fff; color:#111827; font-weight:500;
+    border:1pt solid #e5e7eb;
+  }
+
+  /* === STATUS PILL === */
+  .status-pill { display:inline-block; padding:4pt 12pt; font-size:9pt; font-weight:700; letter-spacing:1.2pt; text-transform:uppercase; border:1pt solid; }
+  .status-Pendente   { background:#fef2f2; color:#b91c1c; border-color:#fca5a5; }
+  .status-Aprovado   { background:#f0fdf4; color:#15803d; border-color:#86efac; }
+  .status-Em-compra  { background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; }
+  .status-Entregue   { background:#ecfdf5; color:#065f46; border-color:#34d399; }
+  .status-Rejeitado  { background:#f9fafb; color:#4b5563; border-color:#d1d5db; }
+
+  /* === TABELA DE ITENS === */
+  table.items { width:100%; border-collapse:collapse; margin-top:6pt; border:1pt solid #0A3D7C; }
+  table.items th {
+    background:#0A3D7C; color:#fff;
+    text-align:left; padding:7pt 10pt;
+    font-size:9pt; font-weight:700; letter-spacing:1.2pt; text-transform:uppercase;
+    border-right:1pt solid rgba(255,255,255,.1);
+  }
+  table.items th:last-child { border-right:none; }
+  table.items td {
+    padding:6pt 10pt; border-bottom:1pt solid #e5e7eb;
+    font-size:10.5pt; vertical-align:middle; color:#1f2937;
+  }
+  table.items tr:nth-child(even) td { background:#f9fafb; }
+  table.items tr:last-child td { border-bottom:none; }
+  table.items .num { text-align:center; width:32pt; color:#9ca3af; font-size:9pt; font-family:'Consolas','Courier New',monospace; }
+  table.items .qtd { text-align:center; font-weight:700; color:#C89B3C; width:50pt; font-size:11.5pt; font-family:'Consolas','Courier New',monospace; }
+  table.items .un  { text-align:center; color:#6b7280; width:50pt; font-size:9.5pt; }
+  table.items .desc{ font-weight:500; color:#111827; }
+
+  /* Footer de total dentro da tabela */
+  .items-total td {
+    background:#0A3D7C !important; color:#fff !important;
+    padding:8pt 10pt; font-weight:700; font-size:10.5pt;
+    border-top: 2pt solid #C89B3C; border-bottom:none !important;
+  }
+  .items-total .tot-qtd { color:#C89B3C; font-size:12.5pt; font-family:'Consolas','Courier New',monospace; }
+  .items-total .tot-lbl { color:#fff; letter-spacing:1.5pt; text-transform:uppercase; font-size:9pt; }
+
+  /* === BOXES === */
+  .obs-box { background:#fffbeb; border-left:3pt solid #C89B3C; padding:8pt 12pt; font-size:10.5pt; color:#3f3f46; font-style:italic; }
+  .resp-box { background:#eff6ff; border-left:3pt solid #2e74c9; padding:8pt 12pt; font-size:10.5pt; color:#1e3a5f; }
+  .resp-box b { display:block; color:#1e40af; font-style:normal; font-size:9pt; letter-spacing:1pt; text-transform:uppercase; margin-bottom:3pt; }
+
+  /* === APROVAÇÃO === */
+  .approval { width:100%; border-collapse:collapse; margin-top:8pt; border:1pt solid #e5e7eb; }
+  .approval td { padding:8pt 12pt; vertical-align:top; font-size:10pt; }
+  .approval .l { background:#f7f9fc; color:#0A3D7C; font-weight:700; font-size:8.5pt; letter-spacing:1.2pt; text-transform:uppercase; width:25%; }
+  .approval .v { color:#111827; }
+
+  /* === ASSINATURAS === */
+  .signatures { margin-top:36pt; width:100%; }
+  .signatures td { width:50%; padding:0 14pt; text-align:center; vertical-align:bottom; }
+  .sign-line { border-top:1pt solid #111827; padding-top:6pt; font-size:10pt; font-weight:700; color:#111827; }
+  .sign-role { font-size:8pt; color:#6b7280; text-transform:uppercase; letter-spacing:2pt; margin-top:2pt; }
+
+  /* === HISTÓRICO === */
+  .hist { width:100%; border-collapse:collapse; margin-top:4pt; }
+  .hist td { padding: 5pt 8pt; font-size:9pt; border-bottom:1pt dashed #e5e7eb; vertical-align:top; }
+  .hist .h-date { color:#6b7280; width:25%; font-family:'Consolas','Courier New',monospace; }
+  .hist .h-act  { color:#1f2937; }
+  .hist .h-by   { color:#0A3D7C; font-weight:600; width:25%; }
+
+  /* === FOOTER === */
+  .footer { margin-top:24pt; padding-top:8pt; border-top:1pt solid #e5e7eb; font-size:8pt; color:#9ca3af; }
+  .footer-table { width:100%; border-collapse:collapse; }
+  .footer-table .l { text-align:left; }
+  .footer-table .r { text-align:right; }
+  .footer b { color:#0A3D7C; }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <p class="brand">SOLYS</p>
-  <p class="brand-sub">Central Administrativa · Pedido de Compras</p>
-</div>
+<!-- BANDEIRA DA MARCA NO TOPO -->
+<table class="brand-bar"><tr><td class="gold"></td><td class="navy"></td><td class="gold2"></td></tr></table>
 
-<p class="doc-title">${escapeHtml(p.lojaNome)}</p>
-<p class="doc-sub">${escapeHtml(p.lojaLocal||'')} · Pedido referente a <b>${mes} / ${ano}</b></p>
+<!-- HEADER: LOGO + PROTOCOLO -->
+<table class="head">
+  <tr>
+    <td class="logo-cell">
+      <p class="brand">SOLYS</p>
+      <p class="sub">Gestão Administrativa</p>
+    </td>
+    <td class="doc-cell">
+      <div class="doc-type">Pedido de Compras</div>
+      <div class="doc-proto">Nº ${escapeHtml(proto)}</div>
+      <div class="doc-issue">Emitido em ${dataEmissao} às ${horaEmissao}</div>
+    </td>
+  </tr>
+</table>
+<div class="head-divider"></div>
+<div class="head-divider-thin"></div>
 
-<table class="meta-grid">
-  <tr><td class="lbl">Loja</td><td>${escapeHtml(p.lojaNome)}</td></tr>
-  <tr><td class="lbl">Localidade</td><td>${escapeHtml(p.lojaLocal||'—')}</td></tr>
-  <tr><td class="lbl">Solicitante</td><td>${escapeHtml(p.solicitante||'—')}</td></tr>
-  <tr><td class="lbl">Mês referente</td><td>${mes} / ${ano}</td></tr>
-  <tr><td class="lbl">Data do pedido</td><td>${new Date(p.criadoEm).toLocaleDateString('pt-BR')} às ${new Date(p.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td></tr>
-  <tr><td class="lbl">Status</td><td><span class="status-box status-${(p.status||'').replace(' ','-')}">${escapeHtml(p.status||'')}</span></td></tr>
+<!-- INFORMAÇÕES -->
+<h2 class="sec">Informações do Pedido</h2>
+<table class="meta">
+  <tr>
+    <td class="lbl">Unidade Solicitante</td>
+    <td class="val">${escapeHtml(p.lojaNome)}</td>
+    <td class="lbl">Localidade</td>
+    <td class="val">${escapeHtml(p.lojaLocal||'—')}</td>
+  </tr>
+  <tr>
+    <td class="lbl">Solicitante</td>
+    <td class="val">${escapeHtml(p.solicitante||'—')}</td>
+    <td class="lbl">Mês de Referência</td>
+    <td class="val"><b>${mes} / ${ano}</b></td>
+  </tr>
+  <tr>
+    <td class="lbl">Data de Emissão</td>
+    <td class="val">${dataEmissao} · ${horaEmissao}</td>
+    <td class="lbl">Status Atual</td>
+    <td class="val"><span class="status-pill status-${(p.status||'').replace(' ','-')}">${escapeHtml(p.status||'')}</span></td>
+  </tr>
 </table>
 
-<h2 class="section">Produtos Solicitados</h2>
+<!-- PRODUTOS -->
+<h2 class="sec">Relação de Produtos Solicitados</h2>
 <table class="items">
   <thead>
-    <tr><th style="width:60pt">QTD</th><th style="width:50pt">UN.</th><th>Descrição do Produto</th></tr>
+    <tr>
+      <th style="width:32pt;text-align:center">Item</th>
+      <th style="width:50pt;text-align:center">Qtd</th>
+      <th style="width:50pt;text-align:center">Un</th>
+      <th>Descrição</th>
+    </tr>
   </thead>
   <tbody>
-    ${p.itens.map(it => `<tr>
+    ${p.itens.map((it,i) => `<tr>
+      <td class="num">${String(i+1).padStart(2,'0')}</td>
       <td class="qtd">${it.quantidade}</td>
       <td class="un">${escapeHtml(it.unidade||'un')}</td>
-      <td>${escapeHtml(it.descricao)}</td>
+      <td class="desc">${escapeHtml(it.descricao)}</td>
     </tr>`).join('')}
+    <tr class="items-total">
+      <td colspan="2" style="text-align:center" class="tot-qtd">${totalUn}</td>
+      <td colspan="2" class="tot-lbl">Total de Unidades · ${p.itens.length} produto${p.itens.length>1?'s':''}</td>
+    </tr>
   </tbody>
 </table>
-<p class="totals"><b>Total: ${totalUn} unidades</b> · ${p.itens.length} produtos</p>
 
 ${p.observacao ? `
-  <h2 class="section">Observações</h2>
+  <h2 class="sec">Observações</h2>
   <div class="obs-box">${escapeHtml(p.observacao)}</div>
 ` : ''}
 
 ${p.respostaAdmin ? `
-  <h2 class="section">Resposta da Diretoria</h2>
-  <div class="resposta-box"><b>${escapeHtml(p.respondidoPor||'Diretoria')}:</b> ${escapeHtml(p.respostaAdmin)}</div>
+  <h2 class="sec">Resposta da Diretoria</h2>
+  <div class="resp-box"><b>${escapeHtml(p.respondidoPor||'Diretoria')}</b>${escapeHtml(p.respostaAdmin)}</div>
 ` : ''}
 
+<!-- APROVAÇÃO -->
+<h2 class="sec">Status de Aprovação</h2>
+<table class="approval">
+  <tr><td class="l">Aprovado / Tramitado por</td><td class="v">${escapeHtml(p.respondidoPor || '— aguardando análise —')}</td></tr>
+  <tr><td class="l">Situação Atual</td><td class="v"><span class="status-pill status-${(p.status||'').replace(' ','-')}">${escapeHtml(p.status||'')}</span></td></tr>
+  <tr><td class="l">Última atualização</td><td class="v">${(p.historico||[]).length ? fmt.datetime((p.historico||[]).slice(-1)[0].at) : dataEmissao}</td></tr>
+</table>
+
+${movs.length ? `
+  <h2 class="sec">Histórico de Tramitação</h2>
+  <table class="hist">
+    ${movs.slice().reverse().map(h => `<tr>
+      <td class="h-date">${fmt.datetime(h.at)}</td>
+      <td class="h-by">${escapeHtml(h.by)}</td>
+      <td class="h-act">${escapeHtml(h.action)}</td>
+    </tr>`).join('')}
+  </table>
+` : ''}
+
+<!-- ASSINATURAS -->
 <table class="signatures">
   <tr>
-    <td><div class="line">${escapeHtml(p.solicitante||'')}<br/>Solicitante</div></td>
-    <td><div class="line">${escapeHtml(p.respondidoPor||'')}<br/>Aprovação · Diretoria</div></td>
+    <td>
+      <div class="sign-line">${escapeHtml(p.solicitante||'')}</div>
+      <div class="sign-role">Solicitante · ${escapeHtml(p.lojaNome)}</div>
+    </td>
+    <td>
+      <div class="sign-line">${escapeHtml(p.respondidoPor||'')}</div>
+      <div class="sign-role">Aprovação · Diretoria SOLYS</div>
+    </td>
   </tr>
 </table>
 
+<!-- FOOTER -->
 <div class="footer">
-  SOLYS · Central Administrativa · Documento gerado em ${new Date().toLocaleString('pt-BR')}
+  <table class="footer-table"><tr>
+    <td class="l"><b>SOLYS</b> · Gestão Administrativa · Central de Compras</td>
+    <td class="r">Documento gerado em ${new Date().toLocaleString('pt-BR')} · <b>${escapeHtml(proto)}</b></td>
+  </tr></table>
 </div>
 
 </body></html>`;
@@ -5602,10 +5762,10 @@ ${p.respostaAdmin ? `
   const a = document.createElement('a');
   const cleanName = p.lojaNome.replace(/[^a-zA-Z0-9]+/g,'_');
   a.href = url;
-  a.download = `Pedido_${cleanName}_${mes}_${ano}.doc`;
+  a.download = `${proto}_${cleanName}.doc`;
   a.click();
   URL.revokeObjectURL(url);
-  toast('Word gerado',`Pedido_${cleanName}_${mes}_${ano}.doc`,'success');
+  toast('Word gerado',`${proto}.doc`,'success');
 }
 
 async function abrirDetalhePedido(id){
