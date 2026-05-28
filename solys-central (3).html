@@ -140,6 +140,52 @@ a{color:inherit;text-decoration:none}
 .login-sub{color:var(--ink-300);font-size:13px;margin-bottom:28px}
 
 .login-card-wide{max-width:740px}
+
+/* Login unificado — select + senha */
+.login-card .field{margin-bottom:14px}
+.login-card .field label{
+  display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;
+  color:var(--ink-300);margin-bottom:6px;font-weight:600;
+}
+.login-card .select-wrap{position:relative}
+.login-card .select-wrap > svg,
+.login-card .select-wrap > i{
+  position:absolute;left:13px;top:50%;transform:translateY(-50%);
+  width:15px;height:15px;color:var(--ink-300);pointer-events:none;
+}
+.login-card .select-wrap select,
+.login-card .select-wrap input{
+  width:100%;
+  background:rgba(255,255,255,.03);
+  border:1px solid var(--border-strong);
+  border-radius:var(--radius);
+  padding:12px 14px 12px 38px;
+  font-size:14px;color:#fff;
+  font-family:inherit;
+  transition:all .2s ease;
+  appearance:none;-webkit-appearance:none;
+}
+.login-card .select-wrap select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b95a8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+  padding-right:36px;
+  cursor:pointer;
+}
+.login-card .select-wrap select option{background:var(--surface-2);color:#fff;padding:8px}
+.login-card .select-wrap select:focus,
+.login-card .select-wrap input:focus{
+  outline:none;border-color:var(--gold-500);
+  background:rgba(200,155,60,.04);
+  box-shadow:0 0 0 3px rgba(200,155,60,.12);
+}
+.login-card .pwd-eye{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  width:28px;height:28px;display:grid;place-items:center;
+  border-radius:7px;color:var(--ink-300);background:none;border:none;cursor:pointer;
+}
+.login-card .pwd-eye:hover{color:#fff;background:rgba(255,255,255,.05)}
+.login-card .pwd-eye svg{width:14px;height:14px}
 .login-lojas-grid{
   display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px;
 }
@@ -2205,7 +2251,7 @@ textarea.fld{resize:vertical;line-height:1.5}
      LOGIN SCREEN
      ============================================================ -->
 <div id="login" class="login-screen">
-  <div class="login-card login-card-wide">
+  <div class="login-card">
     <div class="login-brand">
       <div class="login-mark">S</div>
       <div>
@@ -2213,13 +2259,35 @@ textarea.fld{resize:vertical;line-height:1.5}
         <p>Central Administrativa</p>
       </div>
     </div>
-    <div class="login-title">Selecione sua loja</div>
-    <p class="login-sub">Escolha sua unidade para entrar e montar sua lista de pedidos</p>
+    <div class="login-title">Acesso à plataforma</div>
+    <p class="login-sub">Selecione sua loja e informe a senha</p>
 
-    <div id="loginLojas" class="login-lojas-grid"><!-- preenchido via JS --></div>
+    <div class="field">
+      <label>Loja</label>
+      <div class="select-wrap">
+        <i data-lucide="store"></i>
+        <select id="loginLojaSelect">
+          <option value="">— Selecione sua loja —</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Senha</label>
+      <div class="select-wrap">
+        <i data-lucide="lock"></i>
+        <input type="password" id="loginSenha" placeholder="Sua senha" autocomplete="off" onkeydown="if(event.key==='Enter')entrarLojaUnificado()" />
+        <button type="button" class="pwd-eye" onclick="togglePwd('loginSenha', this)" title="Mostrar/ocultar"><i data-lucide="eye"></i></button>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="entrarLojaUnificado()">
+      <i data-lucide="log-in" style="width:15px;height:15px;display:inline-block;vertical-align:-3px;margin-right:6px"></i>
+      Entrar
+    </button>
 
     <div class="login-admin-toggle">
-      <button class="link-btn" onclick="toggleAdminLogin()"><i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:-1px"></i> Acesso da gestão</button>
+      <button class="link-btn" onclick="toggleAdminLogin()"><i data-lucide="shield" style="width:12px;height:12px;display:inline-block;vertical-align:-1px"></i> Acesso da gestão</button>
     </div>
 
     <div id="adminLoginBox" class="admin-login-box hidden">
@@ -3024,29 +3092,35 @@ function pseudoUserLoja(loja) {
 function showLogin() {
   document.getElementById('login').style.display = 'flex';
   document.getElementById('app').classList.remove('active');
-  // Preenche a grade de lojas — cada loja com campo de senha (compacto e padrão)
-  const grid = document.getElementById('loginLojas');
-  if (grid && state.lojas) {
-    grid.innerHTML = state.lojas.map(l => `
-      <div class="login-loja-v2" data-loja="${l.id}">
-        <div class="ll-head">
-          <div class="login-loja-icon"><i data-lucide="store"></i></div>
-          <div style="min-width:0;flex:1">
-            <div class="login-loja-name">${escapeHtml(l.nome.replace('Loja ',''))}</div>
-            <div class="login-loja-local">${escapeHtml(l.localidade)}</div>
-          </div>
-        </div>
-        <div class="ll-form">
-          <div class="ll-pwd">
-            <input type="password" class="ll-input" placeholder="Senha" id="lpw-${l.id}" autocomplete="off" onkeydown="if(event.key==='Enter')loginLoja('${l.id}')" />
-            <button class="ll-eye" type="button" onclick="togglePwd('lpw-${l.id}', this)" title="Mostrar/ocultar"><i data-lucide="eye"></i></button>
-          </div>
-          <button class="ll-btn" onclick="loginLoja('${l.id}')"><i data-lucide="log-in"></i>Entrar</button>
-        </div>
-      </div>
-    `).join('');
+  // Popula o select com as lojas (ordem alfabética)
+  const sel = document.getElementById('loginLojaSelect');
+  if (sel && state.lojas) {
+    const ordenadas = [...state.lojas].sort((a,b)=>a.nome.localeCompare(b.nome));
+    sel.innerHTML = `<option value="">— Selecione sua loja —</option>` +
+      ordenadas.map(l => `<option value="${l.id}">${escapeHtml(l.nome)} — ${escapeHtml(l.localidade)}</option>`).join('');
   }
+  // Limpa campos
+  const senhaInp = document.getElementById('loginSenha');
+  if (senhaInp) senhaInp.value = '';
   setTimeout(()=>lucide.createIcons(),30);
+}
+
+async function entrarLojaUnificado(){
+  const lojaId = document.getElementById('loginLojaSelect')?.value;
+  if (!lojaId) { toast('Atenção','Selecione sua loja','warning'); return; }
+  // Coloca o valor no input lpw-<lojaId> esperado por loginLoja (compat)
+  const senha = document.getElementById('loginSenha')?.value || '';
+  // injeta um shadow input pra reusar loginLoja sem refatorar
+  let shadow = document.getElementById(`lpw-${lojaId}`);
+  if (!shadow) {
+    shadow = document.createElement('input');
+    shadow.type = 'hidden'; shadow.id = `lpw-${lojaId}`;
+    document.body.appendChild(shadow);
+  }
+  shadow.value = senha;
+  await loginLoja(lojaId);
+  // Remove o shadow após uso
+  shadow.remove();
 }
 
 function togglePwd(inputId, btn){
