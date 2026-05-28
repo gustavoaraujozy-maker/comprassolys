@@ -1,0 +1,9 @@
+node_modules
+solys-app
+*.zip
+*.xlsx
+*.doc
+assets/
+image.png
+solys-app-single.html
+solys-central (3).html
