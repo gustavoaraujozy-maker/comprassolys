@@ -2555,6 +2555,19 @@ const fmt = {
 };
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+/* Lê ano/mês direto da string YYYY-MM-DD evitando o bug de timezone
+   (new Date('2026-06-01') vira 31/05 em UTC-3). */
+function isoToMesIdx(iso){
+  if (!iso) return new Date().getMonth();
+  const m = /^(\d{4})-(\d{2})/.exec(String(iso));
+  return m ? parseInt(m[2])-1 : new Date(iso).getMonth();
+}
+function isoToAno(iso){
+  if (!iso) return new Date().getFullYear();
+  const m = /^(\d{4})/.exec(String(iso));
+  return m ? parseInt(m[1]) : new Date(iso).getFullYear();
+}
 function escapeHtml(s) {
   if (s == null) return '';
   return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -4429,10 +4442,9 @@ function historicoAnualLoja(loja){
 
   // 1) Pedidos (qualquer ano, agrupados por ano/mês)
   state.pedidos.filter(p => p.lojaId === loja.id).forEach(p => {
-    const d = new Date(p.data);
-    if (isNaN(d)) return;
-    const ano = d.getFullYear();
-    const mes = MESES[d.getMonth()];
+    if (!p.data) return;
+    const ano = isoToAno(p.data);
+    const mes = MESES[isoToMesIdx(p.data)];
     out[ano] = out[ano] || {};
     out[ano][mes] = out[ano][mes] || { itens:{}, pedidos:[] };
     out[ano][mes].pedidos.push(p);
@@ -4711,12 +4723,13 @@ function abrirPedidoComBaseEmMes(lojaId, ano, mes){
   const itensObj = hist[ano]?.[mes]?.itens || {};
   const itens = Object.values(itensObj);
   if (!itens.length) { toast('Sem itens','Nada para copiar deste mês','warning'); return; }
-  // injeta itens como rascunho e abre o formulário
+  // injeta itens como rascunho e abre o formulário JÁ no mês de origem
   state._pedidoItensBase = itens.map(i => ({
     descricao: i.descricao,
     quantidade: i.quantidade||1,
     unidade: i.unidade||'un'
   }));
+  state._mesPedidoBase = MESES.indexOf(mes);
   abrirNovoPedido();
 }
 
@@ -4782,7 +4795,7 @@ function renderPedidoCardV2(p, opts={}){
     </div>
 
     <div class="ped-meta">
-      <span><i data-lucide="calendar"></i>${(() => { const d=new Date(p.data); return isNaN(d) ? fmt.date(p.data) : `${MES_NOME[d.getMonth()]} / ${d.getFullYear()}`; })()}</span>
+      <span><i data-lucide="calendar"></i>${MES_NOME[isoToMesIdx(p.data)]} / ${isoToAno(p.data)}</span>
       <span class="sep"></span>
       <span><i data-lucide="user"></i>${escapeHtml(p.solicitante)}</span>
       <span class="sep"></span>
@@ -4841,7 +4854,9 @@ function abrirNovoPedido(editId) {
   }
 
   const sugestoes = [...new Set(loja.itens.map(i => i.descricao))].sort();
-  const mesAtualIdx = editando ? new Date(editando.data).getMonth() : new Date().getMonth();
+  const mesAtualIdx = editando ? isoToMesIdx(editando.data)
+                    : (state._mesPedidoBase != null ? state._mesPedidoBase : new Date().getMonth());
+  state._mesPedidoBase = null;
   const anoAtual = new Date().getFullYear();
 
   const c = document.getElementById('content');
@@ -5020,7 +5035,7 @@ async function salvarPedido(editId) {
    SISTEMA_SOLYS_COMPRAS reflita automaticamente todos os pedidos enviados. */
 async function somarPedidoNaGradeLoja(loja, itens, data){
   if (!loja || !itens?.length) return;
-  const mesIdx = new Date(data).getMonth();
+  const mesIdx = isoToMesIdx(data);
   const mesKey = MESES[mesIdx];
   let mudou = false;
 
