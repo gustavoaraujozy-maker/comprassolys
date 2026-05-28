@@ -1,6 +1,7 @@
 import { Link, ListItem, ListItemIcon, ListItemText, Typography } from '@mui/material';
 import { menuLinks, MenuLinkType } from 'layouts/main-layout/sidebar/MenuLinks';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useSession } from 'providers/SessionProvider';
 interface MenuListProps {
   menuItem: MenuLinkType;
   onDrawerClose?: () => void;
@@ -11,6 +12,17 @@ const MenuListItem = ({ menuItem, onDrawerClose }: MenuListProps) => {
     <Icon sx={{ width: { xs: 20, xl: 24 }, height: { xs: 20, xl: 24 } }} />
   ) : null;
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useSession();
+  const isLogout = menuItem.link.includes('/login') || menuItem.link.includes('/authentication');
+  const handleClick = (e: any) => {
+    if (isLogout) {
+      e.preventDefault();
+      logout();
+      navigate('/authentication/login');
+    }
+    onDrawerClose?.();
+  };
 
   // check if list item is active
   const isActive =
@@ -36,8 +48,8 @@ const MenuListItem = ({ menuItem, onDrawerClose }: MenuListProps) => {
       }}
     >
       <Link
-        href={menuItem.link}
-        onClick={onDrawerClose}
+        href={isLogout ? '#' : `#${menuItem.link}`}
+        onClick={handleClick}
         sx={{
           py: 1.5,
           px: 3,

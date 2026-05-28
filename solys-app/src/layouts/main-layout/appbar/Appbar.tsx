@@ -1,32 +1,58 @@
-import { AppBar, Box, IconButton, Link, Stack, Toolbar, Typography } from '@mui/material';
+import { AppBar, Avatar, Box, IconButton, Link, Stack, Toolbar, Typography } from '@mui/material';
 import IconifyIcon from 'components/base/IconifyIcon';
 import Image from 'components/base/Image';
-import NotificationDropdown from 'layouts/main-layout/appbar/NotificationDropdown';
-import ProfileDropdown from 'layouts/main-layout/appbar/ProfileDropdown';
-import SearchInput from 'layouts/main-layout/appbar/SearchInput';
-import SettingsDropdown from 'layouts/main-layout/appbar/SettingsDropdown';
-import { MouseEvent, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import solysLogo from 'assets/solys-logo.png';
+import { useSession } from 'providers/SessionProvider';
+
+const UserChip = () => {
+  const { session, loja, logout } = useSession();
+  const navigate = useNavigate();
+  const nome = session?.tipo === 'loja'
+    ? (loja?.solicitanteNome || loja?.nome || 'Loja')
+    : 'Diretoria';
+  const sub = session?.tipo === 'loja'
+    ? (loja?.nome || '')
+    : 'SOLYS · Gestão';
+  const initials = (nome || '?').split(' ').slice(0, 2).map((s) => s[0]?.toUpperCase()).join('');
+  return (
+    <Stack direction="row" alignItems="center" spacing={1.2}>
+      <Box sx={{ textAlign: 'right' }}>
+        <Typography sx={{ fontWeight: 700, fontSize: 13, color: 'primary.darker', lineHeight: 1.1 }}>
+          {nome}
+        </Typography>
+        <Typography sx={{ fontSize: 10, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.6 }}>
+          {sub}
+        </Typography>
+      </Box>
+      <Avatar sx={{
+        width: 38, height: 38, bgcolor: 'primary.darker', color: 'secondary.main',
+        fontWeight: 700, fontSize: 13,
+      }}>{initials}</Avatar>
+      <IconButton size="small" onClick={() => { logout(); navigate('/authentication/login'); }}
+        title="Sair">
+        <IconifyIcon icon="solar:logout-3-bold" fontSize={18} sx={{ color: 'text.secondary' }} />
+      </IconButton>
+    </Stack>
+  );
+};
 interface NavbarProps {
   onDrawerToggle: () => void;
 }
 const MainNavbar = ({ onDrawerToggle }: NavbarProps) => {
-  const [open, setOpen] = useState<null | HTMLElement>(null);
-
   const location = useLocation();
 
-  // Extract the route name from the pathname
-  const pathSegments = location.pathname.split('/').filter((segment) => segment.trim() !== '');
-  const routeName = pathSegments.length > 0 ? pathSegments.pop() : 'Overview';
-
-  const handleOpen = (event: MouseEvent<HTMLElement>) => {
-    setOpen(event.currentTarget);
+  // Mapa de rota → título amigável
+  const routeTitles: Record<string, string> = {
+    '': 'Pedidos das Lojas',
+    'lojas': 'Lojas',
+    'acessos': 'Acessos',
+    'minha-lista': 'Minha Lista',
+    'novo-pedido': 'Novo Pedido',
   };
-
-  const handleClose = () => {
-    setOpen(null);
-  };
+  const pathSegments = location.pathname.split('/').filter((s) => s.trim() !== '');
+  const last = pathSegments.length > 0 ? pathSegments[pathSegments.length - 1] : '';
+  const routeName = routeTitles[last] ?? last.replace(/-/g, ' ');
 
   return (
     <>
@@ -60,29 +86,10 @@ const MainNavbar = ({ onDrawerToggle }: NavbarProps) => {
             </IconButton>
           </Stack>
 
-          <Stack direction="row" sx={{ alignItems: 'center', gap: { xs: 2.5, xl: 3.75 } }}>
-            <Box sx={{ display: { xs: 'none', md: 'block', maxWidth: 260 } }}>
-              <SearchInput fullWidth={false} size={'medium'} />
-            </Box>
-
-            <Stack direction="row" sx={{ gap: { xs: 2.5, xl: 3.75 } }}>
-              <SettingsDropdown />
-              <IconButton sx={{ bgcolor: 'background.paper' }} onClick={handleOpen}>
-                <IconifyIcon
-                  color="error.main"
-                  icon="lucide:bell-dot"
-                  sx={{ width: { xs: 18, md: 20, xl: 25 }, height: { xs: 18, md: 20, xl: 25 } }}
-                />
-              </IconButton>
-
-              <NotificationDropdown open={open} onClose={handleClose} />
-            </Stack>
-            <ProfileDropdown />
+          <Stack direction="row" sx={{ alignItems: 'center', gap: { xs: 2, xl: 2.5 } }}>
+            <UserChip />
           </Stack>
         </Toolbar>
-        <Box sx={{ display: { xs: 'block', md: 'none' }, px: 3.15, mt: 2.5 }}>
-          <SearchInput fullWidth={true} size={'small'} />
-        </Box>
       </AppBar>
     </>
   );
