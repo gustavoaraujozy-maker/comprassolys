@@ -4815,10 +4815,15 @@ function abrirNovoPedido(editId) {
   const editando = editId ? state.pedidos.find(p => p.id === editId) : null;
 
   // itens em edição (cópia de trabalho)
-  // Itens vêm com descrição já preenchida (base/referência), mas QUANTIDADE = 0
-  // — a loja preenche a quantidade que precisa neste mês.
+  // 1) "Fazer pedido com base neste mês" → traz descrição E quantidade daquele mês
+  // 2) Edição → mantém o pedido como estava
+  // 3) "Fazer novo pedido" do zero → traz só as descrições da referência, quantidade=0
   if (state._pedidoItensBase && state._pedidoItensBase.length) {
-    state._pedidoItens = state._pedidoItensBase.map(i => ({ descricao:i.descricao, quantidade:0, unidade:i.unidade||'un' }));
+    state._pedidoItens = state._pedidoItensBase.map(i => ({
+      descricao: i.descricao,
+      quantidade: i.quantidade|0,
+      unidade: i.unidade || 'un'
+    }));
     state._pedidoItensBase = null;
   } else if (editando) {
     state._pedidoItens = editando.itens.map(i => ({...i}));
