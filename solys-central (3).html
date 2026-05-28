@@ -2468,6 +2468,7 @@ const Cloud = {
   _mapLoja(l) {
     return {
       id: l.id, codigo: l.codigo, nome: l.nome, localidade: l.localidade,
+      endereco: l.endereco || '',
       acessoId: l.acesso_id || '', senha: l.senha || '',
       solicitanteNome: l.solicitante_nome || '', cadastrado: !!l.cadastrado,
       criadoEm: l.criado_em,
@@ -2492,18 +2493,24 @@ const Cloud = {
     if (error) { toast('Erro ao salvar ID', error.message, 'error'); return false; }
     return true;
   },
-  async cadastrarLoja(lojaId, solicitante, novaSenha){
+  async cadastrarLoja(lojaId, solicitante, novaSenha, endereco){
     if (!this.ok()) return false;
-    const { error } = await supa.from('lojas').update({
-      solicitante_nome: solicitante, senha: novaSenha, cadastrado: true
-    }).eq('id', lojaId);
+    const patch = { solicitante_nome: solicitante, senha: novaSenha, cadastrado: true };
+    if (endereco !== undefined) patch.endereco = endereco;
+    const { error } = await supa.from('lojas').update(patch).eq('id', lojaId);
     if (error) { toast('Erro ao cadastrar', error.message, 'error'); return false; }
+    return true;
+  },
+  async atualizarEnderecoLoja(lojaId, endereco){
+    if (!this.ok()) return false;
+    const { error } = await supa.from('lojas').update({ endereco }).eq('id', lojaId);
+    if (error) { toast('Erro ao salvar endereço', error.message, 'error'); return false; }
     return true;
   },
   async resetarCadastroLoja(lojaId){
     if (!this.ok()) return false;
     const { error } = await supa.from('lojas').update({
-      solicitante_nome: '', senha: 'Sgroup@2026#', cadastrado: false
+      solicitante_nome: '', senha: 'Sgroup@2026#', cadastrado: false, endereco: ''
     }).eq('id', lojaId);
     if (error) { toast('Erro ao resetar', error.message, 'error'); return false; }
     return true;
@@ -3163,10 +3170,12 @@ function abrirCadastroPrimeiroAcesso(lojaId){
     title:`Primeiro acesso · ${loja.nome}`,
     body:`
       <div style="background:rgba(200,155,60,.08);border:1px solid rgba(200,155,60,.2);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12.5px;color:var(--ink-200);line-height:1.5">
-        <b style="color:var(--gold-300)">Cadastro inicial.</b> Informe seu nome (ele será usado como solicitante nos pedidos) e crie uma nova senha — ela substituirá a senha padrão da loja.
+        <b style="color:var(--gold-300)">Cadastro inicial.</b> Informe seus dados — o nome será usado como solicitante e o endereço aparecerá nos documentos emitidos.
       </div>
       <label class="fld-label">Seu nome completo</label>
       <input type="text" id="cadNome" class="fld" placeholder="Ex: Luís Gustavo" autofocus />
+      <label class="fld-label" style="margin-top:12px">Endereço completo da loja</label>
+      <input type="text" id="cadEndereco" class="fld" placeholder="Ex: Av. Bezerra de Menezes, 1234 — Bairro, Fortaleza/CE" value="${escapeHtml(loja.endereco||'')}" />
       <label class="fld-label" style="margin-top:12px">Nova senha</label>
       <input type="password" id="cadSenha1" class="fld" placeholder="Mín. 6 caracteres" />
       <label class="fld-label" style="margin-top:12px">Confirme a nova senha</label>
@@ -3184,21 +3193,24 @@ async function concluirCadastroLoja(lojaId){
   const loja = state.lojas.find(l => l.id === lojaId);
   if (!loja) return;
   const nome = (document.getElementById('cadNome').value||'').trim();
+  const endereco = (document.getElementById('cadEndereco').value||'').trim();
   const s1 = document.getElementById('cadSenha1').value || '';
   const s2 = document.getElementById('cadSenha2').value || '';
   if (!nome || nome.length < 2) { toast('Atenção','Informe seu nome completo','warning'); return; }
+  if (!endereco || endereco.length < 5) { toast('Atenção','Informe o endereço completo da loja','warning'); return; }
   if (s1.length < 6) { toast('Atenção','A senha precisa ter no mínimo 6 caracteres','warning'); return; }
   if (s1 !== s2) { toast('Atenção','As senhas não conferem','warning'); return; }
 
   loja.solicitanteNome = nome;
+  loja.endereco = endereco;
   loja.senha = s1;
   loja.cadastrado = true;
-  if (Cloud.ok()) await Cloud.cadastrarLoja(lojaId, nome, s1);
+  if (Cloud.ok()) await Cloud.cadastrarLoja(lojaId, nome, s1, endereco);
   await Storage.set('solys:lojas', state.lojas);
 
   state.user = pseudoUserLoja(loja);
   await Storage.set('solys:session', { tipo:'loja', lojaId: loja.id, at: new Date().toISOString() });
-  await pushLog('loja-cadastro', `${nome} se cadastrou como solicitante da ${loja.nome}`);
+  await pushLog('loja-cadastro', `${nome} cadastrou ${loja.nome} (${endereco})`);
   closeModal();
   toast('Cadastro concluído',`Bem-vindo(a), ${nome}`, 'success');
   enterApp();
@@ -5804,6 +5816,9 @@ function baixarPedidoWord(id){
   const proto = `SOL-${ano}-${String(mesIdx+1).padStart(2,'0')}-${(p.id||'').replace(/-/g,'').slice(-6).toUpperCase()}`;
   const dataEmissao = new Date(p.criadoEm).toLocaleDateString('pt-BR');
   const horaEmissao = new Date(p.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  // Endereço completo (vem do cadastro da loja). Fallback: localidade.
+  const lojaAtual = state.lojas.find(l => l.id === p.lojaId);
+  const enderecoCompleto = (lojaAtual?.endereco || p.lojaLocal || '—');
 
   // Histórico de movimentação relevante (status changes)
   const movs = (p.historico||[]).filter(h => (h.action||'').includes('→')).slice(-5);
@@ -6002,7 +6017,7 @@ function baixarPedidoWord(id){
 <h2 class="sec">Dados do Pedido</h2>
 <table class="info">
   <tr><td class="lbl">Unidade Solicitante:</td><td class="val"><b>${escapeHtml(p.lojaNome)}</b></td></tr>
-  <tr><td class="lbl">Localidade:</td><td class="val">${escapeHtml(p.lojaLocal||'—')}</td></tr>
+  <tr><td class="lbl">Endereço:</td><td class="val">${escapeHtml(enderecoCompleto)}</td></tr>
   <tr><td class="lbl">Solicitante:</td><td class="val">${escapeHtml(p.solicitante||'—')}</td></tr>
   <tr><td class="lbl">Mês de Referência:</td><td class="val"><b>${mes} de ${ano}</b></td></tr>
   <tr><td class="lbl">Data de Emissão:</td><td class="val">${dataEmissao} às ${horaEmissao}</td></tr>
@@ -6576,6 +6591,12 @@ function renderAcessos(){
               </div>
             </div>
             <div class="ac-field">
+              <div class="ac-lbl">Endereço (sai nos documentos)</div>
+              <div class="ac-val-row">
+                <span class="ac-val" style="font-size:11.5px">${escapeHtml(l.endereco || '— não cadastrado —')}</span>
+              </div>
+            </div>
+            <div class="ac-field">
               <div class="ac-lbl">Senha atual</div>
               <div class="ac-val-row">
                 <code class="ac-val mono">${showPwd ? escapeHtml(l.senha||'') : '•'.repeat((l.senha||'').length || 8)}</code>
@@ -6585,6 +6606,7 @@ function renderAcessos(){
             </div>
           </div>
           <div class="ac-acoes">
+            <button class="qbtn" onclick="abrirEditarEndereco('${l.id}')" title="Editar endereço"><i data-lucide="map-pin"></i>Endereço</button>
             <button class="qbtn" onclick="resetarCadastroLojaUI('${l.id}')" title="Limpa o cadastro e volta para a senha padrão"><i data-lucide="rotate-cw"></i>Resetar cadastro</button>
           </div>
         </div>`;
@@ -6606,6 +6628,39 @@ function renderAcessos(){
     </div>
   `;
   setTimeout(()=>lucide.createIcons(), 30);
+}
+
+function abrirEditarEndereco(lojaId){
+  const l = state.lojas.find(x => x.id === lojaId);
+  if (!l) return;
+  openModal({
+    title:`Endereço · ${l.nome}`,
+    body:`
+      <div style="font-size:12px;color:var(--ink-300);margin-bottom:10px;line-height:1.5">
+        Esse endereço aparecerá nos documentos Word emitidos para esta loja.
+      </div>
+      <label class="fld-label">Endereço completo</label>
+      <input type="text" id="endNovo" class="fld" value="${escapeHtml(l.endereco||'')}" placeholder="Ex: Av. Bezerra de Menezes, 1234 — Bairro, Fortaleza/CE" />
+    `,
+    actions:`
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn gold" onclick="salvarEnderecoLoja('${lojaId}')"><i data-lucide="save"></i>Salvar</button>
+    `
+  });
+  setTimeout(()=>{ lucide.createIcons(); document.getElementById('endNovo')?.focus(); },50);
+}
+
+async function salvarEnderecoLoja(lojaId){
+  const l = state.lojas.find(x => x.id === lojaId);
+  if (!l) return;
+  const novo = (document.getElementById('endNovo').value||'').trim();
+  l.endereco = novo;
+  if (Cloud.ok()) await Cloud.atualizarEnderecoLoja(lojaId, novo);
+  await Storage.set('solys:lojas', state.lojas);
+  await pushLog('loja-endereco', `Endereço de ${l.nome} atualizado`);
+  closeModal();
+  toast('Endereço salvo', l.nome, 'success');
+  renderAcessos();
 }
 
 async function resetarCadastroLojaUI(lojaId){
