@@ -1447,13 +1447,30 @@ textarea.fld{resize:vertical;line-height:1.5}
 .ped-v2 .ped-meta span{display:inline-flex;align-items:center;gap:4px}
 .ped-v2 .ped-meta svg{width:11px;height:11px}
 .ped-v2 .ped-meta .sep{width:3px;height:3px;border-radius:50%;background:var(--ink-500)}
+.ped-v2 .ped-products{margin:14px 16px 0}
+.ped-v2 .ped-products-h{
+  font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-400);margin-bottom:6px;padding:0 2px;
+  display:flex;align-items:center;gap:6px;
+}
+.ped-v2 .ped-products-h::before,
+.ped-v2 .ped-products-h::after{
+  content:'';flex:1;height:1px;background:linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);
+}
 .ped-v2 .ped-itens-v2{
-  margin:12px 16px 0;padding:11px 13px;
-  background:rgba(0,0,0,.22);
+  padding:11px 13px;
+  background:rgba(0,0,0,.28);
   border:1px solid rgba(255,255,255,.04);
   border-radius:10px;
-  display:flex;flex-direction:column;gap:6px;
+  display:flex;flex-direction:column;gap:5px;
   max-height:320px;overflow-y:auto;
+}
+.ped-v2 .ped-itens-v2 .ped-li{
+  padding:4px 6px;border-radius:6px;transition:background .12s;
+}
+.ped-v2 .ped-itens-v2 .ped-li:hover{background:rgba(255,255,255,.025)}
+.ped-v2 .ped-itens-v2 .qq{
+  font-variant-numeric:tabular-nums;letter-spacing:.02em;
 }
 .ped-v2 .ped-itens-v2.expanded{max-height:none}
 .ped-v2 .ped-li{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-100);line-height:1.3}
@@ -1931,6 +1948,10 @@ textarea.fld{resize:vertical;line-height:1.5}
 /* Card mais compacto no board */
 .board-col .ped-v2{font-size:12.5px}
 .board-col .ped-v2 .ped-itens-v2{max-height:120px}
+
+/* Editor de pedido da Diretoria */
+.edit-linha{display:flex;align-items:center;gap:8px;padding:4px}
+.edit-linha .fld{padding:8px 10px;font-size:13px}
 
 /* AI Compact card */
 .ai-summary{
@@ -4913,6 +4934,8 @@ function renderPedidoCardV2(p, opts={}){
     quickActions = `<button class="qbtn" onclick="abrirDetalhePedido('${p.id}')"><i data-lucide="eye"></i>Ver detalhes</button>`;
   }
   if (modo === 'gestao') {
+    quickActions += `<button class="qbtn" onclick="editarPedidoGestao('${p.id}')" title="Editar"><i data-lucide="edit-3"></i></button>`;
+    quickActions += `<button class="qbtn" onclick="baixarPedidoWord('${p.id}')" title="Baixar Word"><i data-lucide="file-text"></i></button>`;
     quickActions += `<button class="qbtn" onclick="abrirDetalhePedido('${p.id}')" title="Detalhes"><i data-lucide="eye"></i></button>`;
   }
 
@@ -4937,14 +4960,17 @@ function renderPedidoCardV2(p, opts={}){
       <span class="sep"></span>
       <span><i data-lucide="user"></i>${escapeHtml(p.solicitante)}</span>
       <span class="sep"></span>
-      <span><i data-lucide="package"></i>${totalItens} un.</span>
+      <span><i data-lucide="package"></i>${p.itens.length} itens · ${totalItens} un.</span>
     </div>
 
-    <div class="ped-itens-v2">
-      ${p.itens.map(it => `<div class="ped-li">
-        <span class="qq">${it.quantidade}${it.unidade && it.unidade!=='un' ? ' '+escapeHtml(it.unidade):''}</span>
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(it.descricao)}</span>
-      </div>`).join('')}
+    <div class="ped-products">
+      <div class="ped-products-h">Produtos solicitados</div>
+      <div class="ped-itens-v2">
+        ${p.itens.map(it => `<div class="ped-li">
+          <span class="qq">${it.quantidade}${it.unidade && it.unidade!=='un' ? ' '+escapeHtml(it.unidade):''}</span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(it.descricao)}</span>
+        </div>`).join('')}
+      </div>
     </div>
 
     ${p.observacao ? `<div class="ped-obs-v2"><i data-lucide="message-square"></i> ${escapeHtml(p.observacao)}</div>` : ''}
@@ -5225,6 +5251,208 @@ async function mudarStatusPedidoLocal(id, novo){
   toast(`${p.lojaNome} → ${novo}`,'','success');
   updateBadges();
   if (['pedidos-colab','central'].includes(state.route)) renderRoute();
+}
+
+/* EDITAR pedido pela Diretoria — modal com itens editáveis */
+function editarPedidoGestao(id){
+  const p = state.pedidos.find(x => x.id === id);
+  if (!p) return;
+  state._editGestaoBuf = p.itens.map(i => ({...i}));
+  const renderLinhas = () => state._editGestaoBuf.map((it,i) => `
+    <div class="edit-linha">
+      <input type="number" min="0" value="${it.quantidade|0}" onchange="state._editGestaoBuf[${i}].quantidade=parseInt(this.value)||0" class="fld" style="width:80px;text-align:center" />
+      <input type="text" value="${escapeHtml(it.unidade||'un')}" onchange="state._editGestaoBuf[${i}].unidade=this.value" class="fld" style="width:70px;text-align:center" />
+      <input type="text" value="${escapeHtml(it.descricao)}" onchange="state._editGestaoBuf[${i}].descricao=this.value" class="fld" style="flex:1" />
+      <button class="icon-btn danger" onclick="state._editGestaoBuf.splice(${i},1);document.getElementById('egLinhas').innerHTML=(${renderLinhas.toString()})()" title="Remover"><i data-lucide="x"></i></button>
+    </div>
+  `).join('');
+
+  openModal({
+    title: `Editar pedido · ${p.lojaNome}`,
+    size:'lg',
+    body: `
+      <div style="margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <label class="fld-label">Solicitante</label>
+          <input type="text" id="egSolic" class="fld" value="${escapeHtml(p.solicitante)}" />
+        </div>
+        <div>
+          <label class="fld-label">Mês de referência</label>
+          <select id="egMes" class="fld">
+            ${MESES.map((m,i) => `<option value="${i}" ${i===isoToMesIdx(p.data)?'selected':''}>${MES_NOME[i]} / ${isoToAno(p.data)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+        <label class="fld-label" style="margin:0">Produtos</label>
+        <button class="btn sm" onclick="state._editGestaoBuf.push({descricao:'',quantidade:0,unidade:'un'});document.getElementById('egLinhas').innerHTML=(${renderLinhas.toString()})()"><i data-lucide="plus"></i>Adicionar</button>
+      </div>
+      <div id="egLinhas" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:4px">
+        ${renderLinhas()}
+      </div>
+      <div style="margin-top:14px">
+        <label class="fld-label">Observação</label>
+        <textarea id="egObs" class="fld" rows="2">${escapeHtml(p.observacao||'')}</textarea>
+      </div>
+    `,
+    actions:`
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn gold" onclick="salvarEdicaoGestao('${id}')"><i data-lucide="save"></i>Salvar alterações</button>
+    `
+  });
+  setTimeout(()=>lucide.createIcons(),60);
+}
+
+async function salvarEdicaoGestao(id){
+  const p = state.pedidos.find(x => x.id === id);
+  if (!p) return;
+  const solic = document.getElementById('egSolic').value.trim();
+  const mesIdx = parseInt(document.getElementById('egMes').value);
+  const obs = document.getElementById('egObs').value.trim();
+  const itens = state._editGestaoBuf
+    .filter(i => (i.descricao||'').trim() && (i.quantidade|0) > 0)
+    .map(i => ({ descricao:i.descricao.trim().toUpperCase(), quantidade:i.quantidade|0, unidade:(i.unidade||'un').trim() }));
+  if (!itens.length) { toast('Atenção','Pelo menos um item com quantidade','warning'); return; }
+  const ano = isoToAno(p.data);
+  const data = `${ano}-${String(mesIdx+1).padStart(2,'0')}-01`;
+
+  p.solicitante = solic;
+  p.observacao = obs;
+  p.itens = itens;
+  p.data = data;
+  p.historico = p.historico || [];
+  p.historico.push({ at:new Date().toISOString(), by:state.user.name, action:'editado pela diretoria' });
+  if (Cloud.ok()) await Cloud.updatePedido(id, { solicitante:solic, observacao:obs, itens, data, historico:p.historico });
+  await Storage.set('solys:pedidos', state.pedidos);
+  await pushLog('pedido-edit-gestao', `${state.user.name} editou pedido de ${p.lojaNome}`);
+  closeModal();
+  toast('Pedido atualizado','','success');
+  renderRoute();
+}
+
+/* BAIXAR Word — gera .doc compatível com Word/LibreOffice via HTML */
+function baixarPedidoWord(id){
+  const p = state.pedidos.find(x => x.id === id);
+  if (!p) return;
+  const mes = MES_NOME[isoToMesIdx(p.data)];
+  const ano = isoToAno(p.data);
+  const totalUn = p.itens.reduce((s,i)=>s+(i.quantidade||0),0);
+
+  const html = `
+<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8" />
+<title>Pedido · ${escapeHtml(p.lojaNome)}</title>
+<!--[if gte mso 9]>
+<xml>
+  <w:WordDocument>
+    <w:View>Print</w:View>
+    <w:Zoom>100</w:Zoom>
+    <w:DoNotOptimizeForBrowser/>
+  </w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+  @page { size: A4; margin: 2cm; }
+  body { font-family: 'Calibri', Arial, sans-serif; color:#1a1a1a; font-size:11pt; }
+  .header { border-bottom: 3px solid #0A3D7C; padding-bottom: 14px; margin-bottom: 22px; }
+  .brand { font-size: 24pt; font-weight: 700; color:#0A3D7C; letter-spacing:-0.5pt; margin:0; }
+  .brand-sub { font-size: 9pt; color:#666; text-transform:uppercase; letter-spacing:2pt; margin-top:2pt; }
+  .doc-title { font-size: 16pt; font-weight: 600; margin: 18pt 0 4pt; color:#0A3D7C; }
+  .doc-sub { color:#666; font-size:10pt; }
+  .meta-grid { width:100%; margin:14pt 0 18pt; border-collapse:collapse; }
+  .meta-grid td { padding: 7pt 10pt; font-size:10.5pt; border:1px solid #d5dce6; vertical-align:top; }
+  .meta-grid .lbl { background:#f3f6fb; color:#0A3D7C; font-weight:600; text-transform:uppercase; font-size:9pt; letter-spacing:0.6pt; width:30%; }
+  .status-box { display:inline-block; padding:4pt 12pt; border-radius:4pt; font-weight:700; font-size:9.5pt; letter-spacing:1pt; text-transform:uppercase; }
+  .status-Pendente   { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
+  .status-Aprovado   { background:#dcfce7; color:#166534; border:1px solid #86efac; }
+  .status-Em-compra  { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+  .status-Entregue   { background:#bbf7d0; color:#14532d; border:1px solid #4ade80; }
+  .status-Rejeitado  { background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; }
+  h2.section { font-size: 12pt; font-weight:600; color:#0A3D7C; margin: 20pt 0 8pt; padding-bottom:4pt; border-bottom:1px solid #d5dce6; text-transform:uppercase; letter-spacing:1pt; }
+  table.items { width:100%; border-collapse:collapse; margin-top:6pt; }
+  table.items th { background:#0A3D7C; color:#fff; text-align:left; padding:8pt 10pt; font-size:10pt; font-weight:600; text-transform:uppercase; letter-spacing:0.5pt; }
+  table.items td { padding:7pt 10pt; border-bottom:1px solid #e5eaf2; font-size:10.5pt; vertical-align:middle; }
+  table.items tr:nth-child(even) td { background:#f9fbfd; }
+  table.items .qtd { text-align:center; font-weight:700; color:#0A3D7C; width:60pt; }
+  table.items .un  { text-align:center; color:#666; width:50pt; }
+  .totals { margin-top: 10pt; text-align:right; font-size:11pt; color:#0A3D7C; }
+  .totals b { font-size:13pt; }
+  .obs-box { background:#fffbeb; border-left:3px solid #C89B3C; padding:9pt 12pt; margin-top:10pt; font-size:10.5pt; color:#444; font-style:italic; }
+  .resposta-box { background:#f0f9ff; border-left:3px solid #2e74c9; padding:9pt 12pt; margin-top:10pt; font-size:10.5pt; color:#1e3a5f; }
+  .signatures { margin-top:48pt; width:100%; }
+  .signatures td { width:50%; padding:0 16pt; text-align:center; vertical-align:bottom; font-size:9.5pt; color:#666; }
+  .signatures .line { border-top:1px solid #1a1a1a; padding-top:5pt; }
+  .footer { margin-top:36pt; padding-top:10pt; border-top:1px solid #d5dce6; font-size:8.5pt; color:#888; text-align:center; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <p class="brand">SOLYS</p>
+  <p class="brand-sub">Central Administrativa · Pedido de Compras</p>
+</div>
+
+<p class="doc-title">${escapeHtml(p.lojaNome)}</p>
+<p class="doc-sub">${escapeHtml(p.lojaLocal||'')} · Pedido referente a <b>${mes} / ${ano}</b></p>
+
+<table class="meta-grid">
+  <tr><td class="lbl">Loja</td><td>${escapeHtml(p.lojaNome)}</td></tr>
+  <tr><td class="lbl">Localidade</td><td>${escapeHtml(p.lojaLocal||'—')}</td></tr>
+  <tr><td class="lbl">Solicitante</td><td>${escapeHtml(p.solicitante||'—')}</td></tr>
+  <tr><td class="lbl">Mês referente</td><td>${mes} / ${ano}</td></tr>
+  <tr><td class="lbl">Data do pedido</td><td>${new Date(p.criadoEm).toLocaleDateString('pt-BR')} às ${new Date(p.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td></tr>
+  <tr><td class="lbl">Status</td><td><span class="status-box status-${(p.status||'').replace(' ','-')}">${escapeHtml(p.status||'')}</span></td></tr>
+</table>
+
+<h2 class="section">Produtos Solicitados</h2>
+<table class="items">
+  <thead>
+    <tr><th style="width:60pt">QTD</th><th style="width:50pt">UN.</th><th>Descrição do Produto</th></tr>
+  </thead>
+  <tbody>
+    ${p.itens.map(it => `<tr>
+      <td class="qtd">${it.quantidade}</td>
+      <td class="un">${escapeHtml(it.unidade||'un')}</td>
+      <td>${escapeHtml(it.descricao)}</td>
+    </tr>`).join('')}
+  </tbody>
+</table>
+<p class="totals"><b>Total: ${totalUn} unidades</b> · ${p.itens.length} produtos</p>
+
+${p.observacao ? `
+  <h2 class="section">Observações</h2>
+  <div class="obs-box">${escapeHtml(p.observacao)}</div>
+` : ''}
+
+${p.respostaAdmin ? `
+  <h2 class="section">Resposta da Diretoria</h2>
+  <div class="resposta-box"><b>${escapeHtml(p.respondidoPor||'Diretoria')}:</b> ${escapeHtml(p.respostaAdmin)}</div>
+` : ''}
+
+<table class="signatures">
+  <tr>
+    <td><div class="line">${escapeHtml(p.solicitante||'')}<br/>Solicitante</div></td>
+    <td><div class="line">${escapeHtml(p.respondidoPor||'')}<br/>Aprovação · Diretoria</div></td>
+  </tr>
+</table>
+
+<div class="footer">
+  SOLYS · Central Administrativa · Documento gerado em ${new Date().toLocaleString('pt-BR')}
+</div>
+
+</body></html>`;
+
+  const blob = new Blob(['﻿' + html], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const cleanName = p.lojaNome.replace(/[^a-zA-Z0-9]+/g,'_');
+  a.href = url;
+  a.download = `Pedido_${cleanName}_${mes}_${ano}.doc`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Word gerado',`Pedido_${cleanName}_${mes}_${ano}.doc`,'success');
 }
 
 async function abrirDetalhePedido(id){
