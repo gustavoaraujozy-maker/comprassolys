@@ -4739,11 +4739,10 @@ function abrirNovoPedido(editId) {
   const editando = editId ? state.pedidos.find(p => p.id === editId) : null;
 
   // itens em edição (cópia de trabalho)
-  // Prioridade: 1) base explícita (vinda de "Fazer pedido com base neste mês")
-  //             2) pedido em edição
-  //             3) referência do último pedido / planilha
+  // Itens vêm com descrição já preenchida (base/referência), mas QUANTIDADE = 0
+  // — a loja preenche a quantidade que precisa neste mês.
   if (state._pedidoItensBase && state._pedidoItensBase.length) {
-    state._pedidoItens = state._pedidoItensBase.map(i => ({...i}));
+    state._pedidoItens = state._pedidoItensBase.map(i => ({ descricao:i.descricao, quantidade:0, unidade:i.unidade||'un' }));
     state._pedidoItensBase = null;
   } else if (editando) {
     state._pedidoItens = editando.itens.map(i => ({...i}));
@@ -4752,16 +4751,17 @@ function abrirNovoPedido(editId) {
     if (ref && ref.itens && ref.itens.length) {
       state._pedidoItens = ref.itens.map(i => ({
         descricao: i.descricao,
-        quantidade: i.quantidade,
+        quantidade: 0,
         unidade: i.unidade || 'un'
       }));
     } else {
-      state._pedidoItens = [{ descricao:'', quantidade:1, unidade:'un' }];
+      state._pedidoItens = [{ descricao:'', quantidade:0, unidade:'un' }];
     }
   }
 
-  const hoje = new Date().toISOString().slice(0,10);
   const sugestoes = [...new Set(loja.itens.map(i => i.descricao))].sort();
+  const mesAtualIdx = editando ? new Date(editando.data).getMonth() : new Date().getMonth();
+  const anoAtual = new Date().getFullYear();
 
   const c = document.getElementById('content');
   c.innerHTML = `
@@ -4778,8 +4778,10 @@ function abrirNovoPedido(editId) {
     <div class="panel" style="max-width:920px">
       <div class="form-row-2">
         <div>
-          <label class="fld-label">Data do pedido</label>
-          <input type="date" id="pedData" class="fld" value="${editando ? editando.data : hoje}" />
+          <label class="fld-label">Para o mês de</label>
+          <select id="pedMes" class="fld">
+            ${MESES.map((m,i) => `<option value="${i}" ${i===mesAtualIdx?'selected':''}>${MES_NOME[i]} / ${anoAtual}</option>`).join('')}
+          </select>
         </div>
         <div>
           <label class="fld-label">Quem está solicitando</label>
@@ -4787,38 +4789,17 @@ function abrirNovoPedido(editId) {
         </div>
       </div>
 
-      <div class="form-row-2" style="margin-top:16px">
-        <div>
-          <label class="fld-label">Prioridade</label>
-          <select id="pedPrio" class="fld">
-            ${PRIORIDADES.map(pr => `<option value="${pr.key}" ${(editando?editando.prioridade:'Médio')===pr.key?'selected':''}>${pr.label} — SLA ${pr.sla}h</option>`).join('')}
-          </select>
-        </div>
-        <div>
-          <label class="fld-label">Categoria <span style="font-size:10px;color:var(--ink-400);font-weight:400">(detecção automática)</span></label>
-          <select id="pedCat" class="fld">
-            <option value="">— Detectar automaticamente</option>
-            ${CATEGORIAS.map(c => `<option value="${c.key}" ${editando?.categoria===c.key?'selected':''}>${c.key}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-
       <div style="margin-top:20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <label class="fld-label" style="margin:0">Produtos do pedido</label>
+          <label class="fld-label" style="margin:0">Produtos do pedido <span style="font-size:10.5px;color:var(--ink-400);font-weight:400">(preencha a quantidade que precisa)</span></label>
           <button class="btn sm" onclick="addLinhaPedido()"><i data-lucide="plus"></i>Adicionar produto</button>
         </div>
         <div id="pedItens"></div>
-        <div id="iaRepetidos" style="margin-top:6px"></div>
       </div>
 
       <div style="margin-top:18px">
         <label class="fld-label">Observação (opcional)</label>
-        <textarea id="pedObs" class="fld" rows="2" placeholder="Ex: urgente, retirar na sede, etc." oninput="detectarUrgenciaInput()">${editando ? escapeHtml(editando.observacao||'') : ''}</textarea>
-        <div id="urgHint" style="margin-top:6px;font-size:11.5px;color:#fdba74;display:none">
-          <i data-lucide="alert-triangle" style="width:12px;height:12px;display:inline-block;vertical-align:-2px"></i>
-          Detectamos palavras de urgência — sugerimos aumentar a prioridade.
-        </div>
+        <textarea id="pedObs" class="fld" rows="2" placeholder="Ex: urgente, retirar na sede, etc.">${editando ? escapeHtml(editando.observacao||'') : ''}</textarea>
       </div>
 
       <div style="margin-top:16px">
@@ -4829,20 +4810,6 @@ function abrirNovoPedido(editId) {
         </div>
       </div>
 
-      ${(() => {
-        const rec = IA.recorrentesDaLoja(loja.id, 6);
-        return rec.length ? `
-        <div style="margin-top:18px;padding:12px 14px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18);border-radius:11px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <span class="ai-badge"><i data-lucide="sparkles"></i>IA SOLYS sugere</span>
-            <span style="font-size:11.5px;color:var(--ink-300)">Itens que você costuma pedir</span>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">
-            ${rec.map(r=>`<button class="qbtn" onclick="adicionarItemSugestao('${escapeHtml(r.descricao).replace(/'/g,'&apos;')}')"><i data-lucide="plus"></i>${escapeHtml(r.descricao)}</button>`).join('')}
-          </div>
-        </div>` : '';
-      })()}
-
       <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end">
         <button class="btn ghost" onclick="renderMinhaLista()">Cancelar</button>
         <button class="btn gold" onclick="salvarPedido(${editando ? `'${editando.id}'` : 'null'})"><i data-lucide="check"></i>${editando ? 'Salvar alterações' : 'Enviar pedido'}</button>
@@ -4851,7 +4818,7 @@ function abrirNovoPedido(editId) {
   `;
   state._pedidoAnexos = (editando?.anexos||[]).slice();
   renderLinhasPedido();
-  setTimeout(()=>{ lucide.createIcons(); document.getElementById('pedSolic').focus(); detectarUrgenciaInput(); }, 60);
+  setTimeout(()=>{ lucide.createIcons(); document.getElementById('pedSolic').focus(); }, 60);
 }
 
 function detectarUrgenciaInput(){
@@ -4885,7 +4852,7 @@ function renderLinhasPedido() {
   if (!wrap) return;
   wrap.innerHTML = state._pedidoItens.map((it, i) => `
     <div class="ped-linha">
-      <input type="number" min="1" class="fld ped-qtd" value="${it.quantidade}" onchange="setLinhaPedido(${i},'quantidade',this.value)" title="Quantidade" />
+      <input type="number" min="0" class="fld ped-qtd" value="${it.quantidade|0}" onchange="setLinhaPedido(${i},'quantidade',this.value)" onfocus="this.select()" title="Quantidade" />
       <input type="text" class="fld ped-uni" value="${escapeHtml(it.unidade||'un')}" onchange="setLinhaPedido(${i},'unidade',this.value)" title="Unidade" />
       <input type="text" class="fld ped-desc" list="sugProdutos" placeholder="Nome do produto" value="${escapeHtml(it.descricao)}" onchange="setLinhaPedido(${i},'descricao',this.value)" />
       <button class="icon-btn danger" onclick="removerLinhaPedido(${i})" title="Remover" ${state._pedidoItens.length<=1?'style="visibility:hidden"':''}><i data-lucide="x"></i></button>
@@ -4898,12 +4865,12 @@ function setLinhaPedido(i, campo, valor) {
   state._pedidoItens[i][campo] = campo === 'quantidade' ? (parseInt(valor)||0) : valor;
 }
 function addLinhaPedido() {
-  state._pedidoItens.push({ descricao:'', quantidade:1, unidade:'un' });
+  state._pedidoItens.push({ descricao:'', quantidade:0, unidade:'un' });
   renderLinhasPedido();
 }
 function removerLinhaPedido(i) {
   state._pedidoItens.splice(i,1);
-  if (!state._pedidoItens.length) state._pedidoItens.push({ descricao:'', quantidade:1, unidade:'un' });
+  if (!state._pedidoItens.length) state._pedidoItens.push({ descricao:'', quantidade:0, unidade:'un' });
   renderLinhasPedido();
 }
 
@@ -4917,34 +4884,30 @@ function usarReferencia() {
 }
 
 async function salvarPedido(editId) {
-  const data = document.getElementById('pedData').value;
+  const mesIdx = parseInt(document.getElementById('pedMes')?.value);
   const solic = document.getElementById('pedSolic').value.trim();
   const obs = document.getElementById('pedObs').value.trim();
-  const prioridade = document.getElementById('pedPrio')?.value || 'Médio';
-  const categoriaManual = document.getElementById('pedCat')?.value || '';
+  // Só entram itens com quantidade > 0
   const itens = state._pedidoItens
-    .filter(it => it.descricao.trim())
-    .map(it => ({ descricao: it.descricao.trim().toUpperCase(), quantidade: it.quantidade||1, unidade: (it.unidade||'un').trim() }));
+    .filter(it => it.descricao.trim() && (it.quantidade|0) > 0)
+    .map(it => ({ descricao: it.descricao.trim().toUpperCase(), quantidade: it.quantidade|0, unidade: (it.unidade||'un').trim() }));
 
   if (!solic) { toast('Atenção','Informe quem está solicitando','warning'); return; }
-  if (!data) { toast('Atenção','Informe a data do pedido','warning'); return; }
-  if (!itens.length) { toast('Atenção','Adicione pelo menos um produto','warning'); return; }
+  if (isNaN(mesIdx)) { toast('Atenção','Escolha o mês do pedido','warning'); return; }
+  if (!itens.length) { toast('Atenção','Preencha a quantidade de pelo menos um produto','warning'); return; }
+
+  // monta a data como o primeiro dia do mês escolhido (ano corrente)
+  const ano = new Date().getFullYear();
+  const data = `${ano}-${String(mesIdx+1).padStart(2,'0')}-01`;
 
   const lojaId = getLojaSelecionada();
   const loja = state.lojas.find(l => l.id === lojaId);
-  const categoria = categoriaManual || detectarCategoria(itens, obs);
   const anexos = state._pedidoAnexos || [];
-
-  // IA: alerta itens repetidos no mesmo pedido
-  const rep = IA.itensRepetidosNoPedido(itens);
-  if (rep.length) {
-    toast('Atenção · IA detectou repetições', rep.join(', '), 'warning');
-  }
 
   if (editId) {
     const p = state.pedidos.find(x => x.id === editId);
     if (!p || p.status !== 'Pendente') { toast('Não é possível editar','Pedido já processado','warning'); return; }
-    Object.assign(p, { data, solicitante:solic, itens, observacao:obs, prioridade, categoria, anexos });
+    Object.assign(p, { data, solicitante:solic, itens, observacao:obs, anexos });
     p.historico = p.historico || [];
     p.historico.push({ at:new Date().toISOString(), by:solic, action:'editado' });
     await pushLog('pedido-edit', `Pedido de ${loja.nome} editado por ${solic}`, { itens: itens.length });
@@ -4954,28 +4917,16 @@ async function salvarPedido(editId) {
       id: uid(),
       lojaId, lojaNome: loja.nome, lojaLocal: loja.localidade,
       data, solicitante: solic, itens, observacao: obs,
-      prioridade, categoria, anexos,
+      anexos,
       status: 'Pendente',
       criadoEm: new Date().toISOString(),
       historico: [{ at:new Date().toISOString(), by:solic, action:'criado' }],
     };
     state.pedidos.unshift(novo);
-
     // HISTÓRICO: soma as quantidades na grade mensal da loja (mês do pedido)
-    // → a planilha SISTEMA_SOLYS_COMPRAS cresce automaticamente
     await somarPedidoNaGradeLoja(loja, itens, data);
-
-    // AUTOMAÇÃO: auto-aprovação por prioridade Baixa
-    if (AUTOM.autoAprovaPrioBaixa && prioridade === 'Baixo') {
-      novo.status = 'Aprovado';
-      novo.respondidoPor = 'Automação';
-      novo.respostaAdmin = 'Auto-aprovado (prioridade baixa).';
-      novo.historico.push({ at:new Date().toISOString(), by:'Automação', action:'status: Pendente → Aprovado' });
-      toast('Pedido auto-aprovado','Regra de prioridade baixa','success');
-    }
-
-    await pushLog('pedido-novo', `${loja.nome}: novo pedido de ${solic} (${itens.length} itens) · prioridade ${prioridade}`, { data });
-    toast('Pedido enviado','A gestão e o histórico mensal foram atualizados','success');
+    await pushLog('pedido-novo', `${loja.nome}: novo pedido de ${solic} (${itens.length} itens) · ${MES_NOME[mesIdx]}`, { data });
+    toast('Pedido enviado','A gestão recebeu e o histórico foi atualizado','success');
   }
   await Storage.set('solys:pedidos', state.pedidos);
   updateBadges();
