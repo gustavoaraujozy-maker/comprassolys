@@ -4297,18 +4297,18 @@ function renderMinhaLista() {
       </div>
     </div>
 
-    <!-- REFERÊNCIA MÊS ANTERIOR -->
+    <!-- REFERÊNCIA MÊS ANTERIOR / HISTÓRICO DA LOJA -->
     <div class="panel">
       <div class="panel-head">
         <div>
-          <div class="panel-title"><i data-lucide="history" style="width:15px;height:15px;display:inline-block;vertical-align:-2px;color:var(--gold-400)"></i> Pedido do mês anterior</div>
+          <div class="panel-title"><i data-lucide="history" style="width:15px;height:15px;display:inline-block;vertical-align:-2px;color:var(--gold-400)"></i> Histórico da loja — ${ref ? (ref.tipo==='pedido' ? `último pedido (${fmt.date(ref.pedido.data)})` : `referência ${MES_NOME[ref.mesIdx]}`) : '—'}</div>
           <div class="panel-sub">${ref
             ? (ref.tipo === 'pedido'
-                ? `Último pedido — ${fmt.date(ref.pedido.data)} · solicitado por ${escapeHtml(ref.pedido.solicitante)}`
-                : `Referência do controle de ${MES_NOME[ref.mesIdx]}`)
-            : 'Sem histórico ainda'}</div>
+                ? `Solicitado por ${escapeHtml(ref.pedido.solicitante)} · ${ref.itens.length} itens`
+                : `Itens da planilha de ${MES_NOME[ref.mesIdx]} · ${ref.itens.length} itens · sirva como base para o pedido deste mês`)
+            : 'Esta loja ainda não tem histórico'}</div>
         </div>
-        ${ref ? `<button class="btn" onclick="usarReferencia()"><i data-lucide="copy"></i>Usar como base</button>` : ''}
+        ${ref ? `<button class="btn gold" onclick="abrirNovoPedido()"><i data-lucide="copy"></i>Fazer pedido com base nisso</button>` : ''}
       </div>
       ${ref ? `
         <div class="ref-grid">
@@ -4318,6 +4318,10 @@ function renderMinhaLista() {
               <span class="ref-desc">${escapeHtml(it.descricao)}</span>
             </div>
           `).join('')}
+        </div>
+        <div style="margin-top:12px;font-size:11.5px;color:var(--ink-300);display:flex;align-items:center;gap:6px">
+          <i data-lucide="info" style="width:12px;height:12px"></i>
+          Ao clicar em <b style="color:var(--gold-300)">"Fazer novo pedido"</b> esses itens já vêm preenchidos — você só ajusta as quantidades e envia.
         </div>
       ` : `<div class="empty-state"><i data-lucide="package"></i><p>Esta loja ainda não tem pedidos registrados.<br><small>Clique em "Fazer novo pedido" para começar.</small></p></div>`}
     </div>
@@ -4445,9 +4449,22 @@ function abrirNovoPedido(editId) {
   const editando = editId ? state.pedidos.find(p => p.id === editId) : null;
 
   // itens em edição (cópia de trabalho)
-  state._pedidoItens = editando
-    ? editando.itens.map(i => ({...i}))
-    : [{ descricao:'', quantidade:1, unidade:'un' }];
+  // Se for pedido NOVO: pré-preenche com o histórico da loja
+  // (último pedido OU itens do mês anterior na planilha SISTEMA_SOLYS_COMPRAS)
+  if (editando) {
+    state._pedidoItens = editando.itens.map(i => ({...i}));
+  } else {
+    const ref = referenciaMesAnterior(loja);
+    if (ref && ref.itens.length) {
+      state._pedidoItens = ref.itens.map(i => ({
+        descricao: i.descricao,
+        quantidade: i.quantidade,
+        unidade: i.unidade || 'un'
+      }));
+    } else {
+      state._pedidoItens = [{ descricao:'', quantidade:1, unidade:'un' }];
+    }
+  }
 
   const hoje = new Date().toISOString().slice(0,10);
   const sugestoes = [...new Set(loja.itens.map(i => i.descricao))].sort();
@@ -4650,6 +4667,10 @@ async function salvarPedido(editId) {
     };
     state.pedidos.unshift(novo);
 
+    // HISTÓRICO: soma as quantidades na grade mensal da loja (mês do pedido)
+    // → a planilha SISTEMA_SOLYS_COMPRAS cresce automaticamente
+    await somarPedidoNaGradeLoja(loja, itens, data);
+
     // AUTOMAÇÃO: auto-aprovação por prioridade Baixa
     if (AUTOM.autoAprovaPrioBaixa && prioridade === 'Baixo') {
       novo.status = 'Aprovado';
@@ -4660,12 +4681,49 @@ async function salvarPedido(editId) {
     }
 
     await pushLog('pedido-novo', `${loja.nome}: novo pedido de ${solic} (${itens.length} itens) · prioridade ${prioridade}`, { data });
-    toast('Pedido enviado','A gestão foi notificada','success');
+    toast('Pedido enviado','A gestão e o histórico mensal foram atualizados','success');
   }
   await Storage.set('solys:pedidos', state.pedidos);
   updateBadges();
   renderMinhaLista();
   setTimeout(()=>lucide.createIcons(),50);
+}
+
+/* Soma cada item do pedido na grade mensal da loja (mês da data do pedido).
+   Se o item ainda não existe na grade, cria. Isso faz com que a planilha
+   SISTEMA_SOLYS_COMPRAS reflita automaticamente todos os pedidos enviados. */
+async function somarPedidoNaGradeLoja(loja, itens, data){
+  if (!loja || !itens?.length) return;
+  const mesIdx = new Date(data).getMonth();
+  const mesKey = MESES[mesIdx];
+  let mudou = false;
+
+  itens.forEach(it => {
+    const desc = (it.descricao||'').trim().toUpperCase();
+    if (!desc) return;
+    let existente = loja.itens.find(x => (x.descricao||'').trim().toUpperCase() === desc);
+    if (!existente) {
+      existente = {
+        id: uid(), descricao: desc,
+        jan:0,fev:0,mar:0,abr:0,mai:0,jun:0,jul:0,ago:0,set:0,out:0,nov:0,dez:0,
+        obs:'',
+        criadoEm: new Date().toISOString(),
+        historico: [{ at:new Date().toISOString(), by:'Pedido', action:'item criado via pedido' }]
+      };
+      loja.itens.push(existente);
+    }
+    existente[mesKey] = (existente[mesKey]|0) + (it.quantidade|0);
+    existente.historico = existente.historico || [];
+    existente.historico.push({
+      at:new Date().toISOString(), by:state.user?.name||'?',
+      action:`+${it.quantidade} em ${mesKey} (pedido)`
+    });
+    mudou = true;
+  });
+
+  if (mudou) {
+    await Storage.set('solys:lojas', state.lojas);
+  }
 }
 
 /* ---- AÇÕES RÁPIDAS PARA GESTÃO ---- */
