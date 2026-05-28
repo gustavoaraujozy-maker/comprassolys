@@ -3247,6 +3247,9 @@ const Cloud = {
   },
   async cadastrarLoja(lojaId, solicitante, novaSenha, endereco){
     if (!this.ok()) return false;
+    // Atualiza senha no Supabase Auth (usuário já está logado com a senha padrão)
+    const { error: authErr } = await supa.auth.updateUser({ password: novaSenha });
+    if (authErr) { toast('Erro ao atualizar senha', authErr.message, 'error'); return false; }
     const patch = { solicitante_nome: solicitante, senha: novaSenha, cadastrado: true };
     if (endereco !== undefined) patch.endereco = endereco;
     const { error } = await supa.from('lojas').update(patch).eq('id', lojaId);
@@ -3261,11 +3264,30 @@ const Cloud = {
   },
   async resetarCadastroLoja(lojaId){
     if (!this.ok()) return false;
-    const { error } = await supa.from('lojas').update({
-      solicitante_nome: '', senha: 'Sgroup@2026#', cadastrado: false, endereco: ''
-    }).eq('id', lojaId);
+    // Chama função RPC server-side que reseta senha no Auth + zera cadastro
+    const { error } = await supa.rpc('reset_loja_acesso', { p_loja_id: lojaId });
     if (error) { toast('Erro ao resetar', error.message, 'error'); return false; }
     return true;
+  },
+
+  /* === SUPABASE AUTH === */
+  async signInLoja(codigoLoja, senha){
+    if (!this.ok()) return { error: { message: 'Supabase offline' } };
+    const email = `${codigoLoja}@solys.local`;
+    return await supa.auth.signInWithPassword({ email, password: senha });
+  },
+  async signInDiretoria(senha){
+    if (!this.ok()) return { error: { message: 'Supabase offline' } };
+    return await supa.auth.signInWithPassword({ email: 'diretoria@solys.local', password: senha });
+  },
+  async signOut(){
+    if (!this.ok()) return;
+    await supa.auth.signOut();
+  },
+  async getSession(){
+    if (!this.ok()) return null;
+    const { data } = await supa.auth.getSession();
+    return data.session;
   },
   _mapPedido(p) {
     return {
@@ -3821,9 +3843,10 @@ async function initAuth() {
   state.lojas = lojas;
   await Storage.set('solys:lojas', state.lojas);
 
-  // Sessão ativa?
+  // Sessão ativa? — exige sessão Supabase Auth válida
   const session = await Storage.get('solys:session', null);
-  if (session) {
+  const authSession = await Cloud.getSession();
+  if (session && authSession) {
     if (session.tipo === 'loja') {
       const loja = state.lojas.find(l => l.id === session.lojaId);
       if (loja) { state.user = pseudoUserLoja(loja); enterApp(); return; }
@@ -3831,6 +3854,9 @@ async function initAuth() {
       const u = users.find(x => x.id === session.userId);
       if (u) { state.user = u; enterApp(); return; }
     }
+  } else if (session && !authSession) {
+    // Sessão local vazia: limpa pra forçar novo login
+    await Storage.del('solys:session');
   }
   showLogin();
 }
@@ -3896,19 +3922,25 @@ async function loginLoja(lojaId){
   const senha = (document.getElementById(`lpw-${lojaId}`)?.value || '');
   if (!senha) { toast('Atenção','Informe a senha','warning'); return; }
 
-  // Senha atual da loja precisa bater
-  if (senha !== (loja.senha||'')) {
-    toast('Acesso negado','Senha incorreta','error');
+  // Tenta autenticar via Supabase Auth (signInWithPassword)
+  const { data, error } = await Cloud.signInLoja(loja.codigo, senha);
+  if (error || !data?.session) {
+    toast('Acesso negado', 'Senha incorreta', 'error');
     return;
   }
 
-  // Se não cadastrada: abre modal pra cadastrar nome + nova senha
+  // Atualiza loja com dados frescos do server
+  const { data: fresh } = await supa.from('lojas').select('*').eq('id', lojaId).single();
+  if (fresh) {
+    Object.assign(loja, Cloud._mapLoja(fresh));
+  }
+
+  // Se loja ainda não cadastrou: abre modal de cadastro (continua logada na Auth)
   if (!loja.cadastrado) {
     abrirCadastroPrimeiroAcesso(lojaId);
     return;
   }
 
-  // Já cadastrada: entra direto
   state.user = pseudoUserLoja(loja);
   await Storage.set('solys:session', { tipo:'loja', lojaId: loja.id, at: new Date().toISOString() });
   await pushLog('login', `Entrada pela loja ${loja.nome} (${loja.solicitanteNome||'?'})`, { loja: loja.nome });
@@ -4007,7 +4039,11 @@ async function entrarComoLoja(lojaId) {
 
 async function entrarComoGestao(role) {
   const pass = document.getElementById('adminPass').value;
-  if (pass !== 'Solys@2027#k') { toast('Acesso negado','Senha incorreta','error'); return; }
+  // Autentica via Supabase Auth (usuario diretoria@solys.local)
+  const { data, error } = await Cloud.signInDiretoria(pass);
+  if (error || !data?.session) {
+    toast('Acesso negado','Senha incorreta','error'); return;
+  }
   const u = state.users.find(x => x.role === role) || state.users.find(x => x.role === 'Administrador');
   if (!u) { toast('Erro',`Nenhum usuário ${role} cadastrado`,'error'); return; }
   state.user = u;
@@ -4031,6 +4067,7 @@ async function doLogin(email, pass) {
 async function logout() {
   if (state.user) await pushLog('logout', `${state.user.name} encerrou sessão`);
   await Storage.del('solys:session');
+  await Cloud.signOut();
   state.user = null;
   showLogin();
 }
