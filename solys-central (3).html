@@ -4660,15 +4660,9 @@ function renderHistoricoAnual(loja){
             <h3><i data-lucide="calendar-days" style="width:18px;height:18px;display:inline-block;vertical-align:-3px;color:var(--gold-400)"></i> Histórico ${ano}</h3>
             <span class="yr-badge ${isAtual?'yr-now':''}">${isAtual?'Atual':'Encerrado'}</span>
           </div>
-          <div style="display:flex;align-items:center;gap:14px">
-            <div style="text-align:right">
-              <div style="font-family:'Outfit';font-size:20px;font-weight:600;color:#fff;letter-spacing:-.02em;line-height:1">${totalAno}</div>
-              <div class="year-sub">${mesesComDados}/12 meses · ${totalAno} un. no ano</div>
-            </div>
-            <span class="year-collapse-btn ${collapsed?'col':''}" onclick="toggleAnoCol('${colKey}')">
-              <i data-lucide="chevron-down"></i>
-            </span>
-          </div>
+          <span class="year-collapse-btn ${collapsed?'col':''}" onclick="toggleAnoCol('${colKey}')">
+            <i data-lucide="chevron-down"></i>
+          </span>
         </header>
         <div class="year-panel-body ${collapsed?'collapsed':''}">
           <div class="month-grid">
