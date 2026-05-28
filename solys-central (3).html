@@ -3166,11 +3166,17 @@ async function loginLoja(lojaId){
 function abrirCadastroPrimeiroAcesso(lojaId){
   const loja = state.lojas.find(l => l.id === lojaId);
   if (!loja) return;
+  // Defensivo: se por qualquer motivo já estiver cadastrada, não abre
+  if (loja.cadastrado) {
+    toast('Loja já cadastrada','Acesso é único — entre com a senha pessoal','warning');
+    return;
+  }
   openModal({
     title:`Primeiro acesso · ${loja.nome}`,
     body:`
-      <div style="background:rgba(200,155,60,.08);border:1px solid rgba(200,155,60,.2);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12.5px;color:var(--ink-200);line-height:1.5">
-        <b style="color:var(--gold-300)">Cadastro inicial.</b> Informe seus dados — o nome será usado como solicitante e o endereço aparecerá nos documentos emitidos.
+      <div style="background:rgba(200,155,60,.08);border:1px solid rgba(200,155,60,.2);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12.5px;color:var(--ink-200);line-height:1.55">
+        <b style="color:var(--gold-300);display:block;margin-bottom:4px"><i data-lucide="info" style="width:12px;height:12px;display:inline-block;vertical-align:-1px"></i> Cadastro único.</b>
+        Esse cadastro pode ser feito <b>apenas uma vez</b>. Depois de salvar, somente você (com sua senha pessoal) e a Diretoria terão acesso. Confira tudo antes de confirmar.
       </div>
       <label class="fld-label">Seu nome completo</label>
       <input type="text" id="cadNome" class="fld" placeholder="Ex: Luís Gustavo" autofocus />
@@ -3200,6 +3206,20 @@ async function concluirCadastroLoja(lojaId){
   if (!endereco || endereco.length < 5) { toast('Atenção','Informe o endereço completo da loja','warning'); return; }
   if (s1.length < 6) { toast('Atenção','A senha precisa ter no mínimo 6 caracteres','warning'); return; }
   if (s1 !== s2) { toast('Atenção','As senhas não conferem','warning'); return; }
+
+  // Re-checa no servidor antes de salvar — evita corrida de cadastro duplo
+  if (Cloud.ok()) {
+    const { data: fresh } = await supa.from('lojas').select('cadastrado,solicitante_nome').eq('id', lojaId).maybeSingle();
+    if (fresh && fresh.cadastrado) {
+      // Atualiza estado local com a versão mais nova
+      loja.cadastrado = true;
+      loja.solicitanteNome = fresh.solicitante_nome || loja.solicitanteNome;
+      closeModal();
+      toast('Loja já cadastrada', `${fresh.solicitante_nome || 'Outro usuário'} já registrou o acesso`, 'warning');
+      showLogin();
+      return;
+    }
+  }
 
   loja.solicitanteNome = nome;
   loja.endereco = endereco;
