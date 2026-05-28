@@ -1140,17 +1140,17 @@ table.data tbody tr:last-child td{border-bottom:none}
 @media(max-width:420px){.month-grid{grid-template-columns:repeat(3, 1fr)}}
 .month-card{
   position:relative;
-  padding:10px 8px;
+  padding:12px 8px;
   background:linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.005));
   border:1px solid var(--border);
   border-radius:10px;text-align:center;cursor:pointer;
   transition:all .15s;
-  min-height:64px;display:flex;flex-direction:column;justify-content:center;
+  min-height:48px;display:flex;align-items:center;justify-content:center;
 }
 .month-card:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.14)}
 .month-card .mc-name{
-  font-size:10.5px;font-weight:600;color:var(--ink-300);
-  text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px;
+  font-size:12px;font-weight:600;color:var(--ink-200);
+  text-transform:uppercase;letter-spacing:.12em;
 }
 .month-card .mc-val{
   font-family:'Outfit';font-size:18px;font-weight:600;color:#fff;letter-spacing:-.02em;line-height:1;
@@ -4674,7 +4674,6 @@ function renderHistoricoAnual(loja){
           <div class="month-grid">
             ${MESES.map((m,i) => {
               const it = meses[m]?.itens || {};
-              const qtd = Object.values(it).reduce((a,b)=>a+(b.quantidade||0),0);
               const nItens = Object.keys(it).length;
               const isAtualMes = isAtual && i === mesAtualIdx;
               const isSel = sel === m;
@@ -4687,8 +4686,6 @@ function renderHistoricoAnual(loja){
               ].filter(Boolean).join(' ');
               return `<div class="${cls}" onclick="selecionarMesLoja('${loja.id}','${ano}','${m}')">
                 <div class="mc-name">${MESES_LABEL[i]}</div>
-                <div class="mc-val">${qtd}</div>
-                <div class="mc-sub">${nItens ? nItens+' itens' : '—'}</div>
               </div>`;
             }).join('')}
           </div>
