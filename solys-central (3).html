@@ -139,30 +139,34 @@ a{color:inherit;text-decoration:none}
 .login-title{font-family:'Playfair Display',serif;font-size:28px;font-weight:600;margin-bottom:6px;letter-spacing:-.02em}
 .login-sub{color:var(--ink-300);font-size:13px;margin-bottom:28px}
 
-.login-card-wide{max-width:720px}
+.login-card-wide{max-width:740px}
 .login-lojas-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px;
 }
 
-/* Loja card v2 — com form de login */
+/* Loja card v2 — compacto */
 .login-loja-v2{
   background:rgba(255,255,255,.025);
   border:1px solid var(--border);
-  border-radius:14px;
-  padding:14px;
-  display:flex;flex-direction:column;gap:10px;
+  border-radius:11px;
+  padding:10px 11px;
+  display:flex;flex-direction:column;gap:8px;
   transition:all .18s ease;
 }
 .login-loja-v2:hover{
-  border-color:rgba(200,155,60,.35);
-  background:rgba(200,155,60,.04);
+  border-color:rgba(200,155,60,.3);
+  background:rgba(200,155,60,.03);
 }
-.login-loja-v2 .ll-head{display:flex;align-items:center;gap:11px}
-.login-loja-v2 .ll-form{display:flex;flex-direction:column;gap:8px}
+.login-loja-v2 .ll-head{display:flex;align-items:center;gap:9px}
+.login-loja-v2 .ll-head .login-loja-icon{width:32px;height:32px;border-radius:8px}
+.login-loja-v2 .ll-head .login-loja-icon svg{width:15px;height:15px}
+.login-loja-v2 .ll-head .login-loja-name{font-size:13px;font-weight:600;color:#fff;line-height:1.1}
+.login-loja-v2 .ll-head .login-loja-local{font-size:10.5px;color:var(--ink-300);margin-top:1px}
+.login-loja-v2 .ll-form{display:flex;flex-direction:column;gap:6px}
 .login-loja-v2 .ll-input{
   width:100%;background:rgba(0,0,0,.25);
   border:1px solid rgba(255,255,255,.06);color:#fff;
-  padding:8px 11px;border-radius:8px;font-size:12.5px;font-family:inherit;
+  padding:7px 10px;border-radius:7px;font-size:12px;font-family:inherit;
   transition:all .15s;
 }
 .login-loja-v2 .ll-input:focus{
@@ -171,25 +175,25 @@ a{color:inherit;text-decoration:none}
   box-shadow:0 0 0 2px rgba(200,155,60,.12);
 }
 .login-loja-v2 .ll-pwd{position:relative}
-.login-loja-v2 .ll-pwd .ll-input{padding-right:34px}
+.login-loja-v2 .ll-pwd .ll-input{padding-right:30px}
 .login-loja-v2 .ll-eye{
-  position:absolute;right:6px;top:50%;transform:translateY(-50%);
-  width:26px;height:26px;display:grid;place-items:center;
-  border-radius:6px;color:var(--ink-300);background:none;border:none;cursor:pointer;
+  position:absolute;right:4px;top:50%;transform:translateY(-50%);
+  width:22px;height:22px;display:grid;place-items:center;
+  border-radius:5px;color:var(--ink-300);background:none;border:none;cursor:pointer;
 }
 .login-loja-v2 .ll-eye:hover{color:#fff;background:rgba(255,255,255,.05)}
-.login-loja-v2 .ll-eye svg{width:14px;height:14px}
+.login-loja-v2 .ll-eye svg{width:12px;height:12px}
 .login-loja-v2 .ll-btn{
-  display:flex;align-items:center;justify-content:center;gap:6px;
-  padding:9px 12px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:7px 10px;border-radius:8px;
   background:linear-gradient(135deg,var(--gold-500),var(--gold-600));
-  color:#1a1208;font-weight:600;font-size:12.5px;
+  color:#1a1208;font-weight:600;font-size:12px;
   border:none;cursor:pointer;
-  box-shadow:0 4px 14px rgba(200,155,60,.18);
+  box-shadow:0 3px 10px rgba(200,155,60,.16);
   transition:all .15s;
 }
-.login-loja-v2 .ll-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(200,155,60,.28)}
-.login-loja-v2 .ll-btn svg{width:13px;height:13px}
+.login-loja-v2 .ll-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(200,155,60,.26)}
+.login-loja-v2 .ll-btn svg{width:12px;height:12px}
 .login-loja{
   display:flex;align-items:center;gap:11px;
   padding:14px 14px;text-align:left;
@@ -3020,7 +3024,7 @@ function pseudoUserLoja(loja) {
 function showLogin() {
   document.getElementById('login').style.display = 'flex';
   document.getElementById('app').classList.remove('active');
-  // Preenche a grade de lojas — cada loja com campo de senha
+  // Preenche a grade de lojas — cada loja com campo de senha (compacto e padrão)
   const grid = document.getElementById('loginLojas');
   if (grid && state.lojas) {
     grid.innerHTML = state.lojas.map(l => `
@@ -3031,14 +3035,13 @@ function showLogin() {
             <div class="login-loja-name">${escapeHtml(l.nome.replace('Loja ',''))}</div>
             <div class="login-loja-local">${escapeHtml(l.localidade)}</div>
           </div>
-          ${l.cadastrado ? `<span class="ll-tag" title="Cadastrada por ${escapeHtml(l.solicitanteNome||'')}">${escapeHtml((l.solicitanteNome||'').split(' ')[0]||'')}</span>` : `<span class="ll-tag ll-tag-new"><i data-lucide="sparkles"></i>1º acesso</span>`}
         </div>
         <div class="ll-form">
           <div class="ll-pwd">
-            <input type="password" class="ll-input" placeholder="${l.cadastrado ? 'Senha' : 'Senha inicial: Sgroup@2026#'}" id="lpw-${l.id}" autocomplete="off" onkeydown="if(event.key==='Enter')loginLoja('${l.id}')" />
+            <input type="password" class="ll-input" placeholder="Senha" id="lpw-${l.id}" autocomplete="off" onkeydown="if(event.key==='Enter')loginLoja('${l.id}')" />
             <button class="ll-eye" type="button" onclick="togglePwd('lpw-${l.id}', this)" title="Mostrar/ocultar"><i data-lucide="eye"></i></button>
           </div>
-          <button class="ll-btn" onclick="loginLoja('${l.id}')"><i data-lucide="log-in"></i>${l.cadastrado ? 'Entrar' : 'Acessar e cadastrar'}</button>
+          <button class="ll-btn" onclick="loginLoja('${l.id}')"><i data-lucide="log-in"></i>Entrar</button>
         </div>
       </div>
     `).join('');
