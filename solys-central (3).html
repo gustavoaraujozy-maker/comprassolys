@@ -139,10 +139,57 @@ a{color:inherit;text-decoration:none}
 .login-title{font-family:'Playfair Display',serif;font-size:28px;font-weight:600;margin-bottom:6px;letter-spacing:-.02em}
 .login-sub{color:var(--ink-300);font-size:13px;margin-bottom:28px}
 
-.login-card-wide{max-width:600px}
+.login-card-wide{max-width:720px}
 .login-lojas-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;
 }
+
+/* Loja card v2 — com form de login */
+.login-loja-v2{
+  background:rgba(255,255,255,.025);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+  display:flex;flex-direction:column;gap:10px;
+  transition:all .18s ease;
+}
+.login-loja-v2:hover{
+  border-color:rgba(200,155,60,.35);
+  background:rgba(200,155,60,.04);
+}
+.login-loja-v2 .ll-head{display:flex;align-items:center;gap:11px}
+.login-loja-v2 .ll-form{display:flex;flex-direction:column;gap:8px}
+.login-loja-v2 .ll-input{
+  width:100%;background:rgba(0,0,0,.25);
+  border:1px solid rgba(255,255,255,.06);color:#fff;
+  padding:8px 11px;border-radius:8px;font-size:12.5px;font-family:inherit;
+  transition:all .15s;
+}
+.login-loja-v2 .ll-input:focus{
+  outline:none;border-color:var(--gold-500);
+  background:rgba(200,155,60,.06);
+  box-shadow:0 0 0 2px rgba(200,155,60,.12);
+}
+.login-loja-v2 .ll-pwd{position:relative}
+.login-loja-v2 .ll-pwd .ll-input{padding-right:34px}
+.login-loja-v2 .ll-eye{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  width:26px;height:26px;display:grid;place-items:center;
+  border-radius:6px;color:var(--ink-300);background:none;border:none;cursor:pointer;
+}
+.login-loja-v2 .ll-eye:hover{color:#fff;background:rgba(255,255,255,.05)}
+.login-loja-v2 .ll-eye svg{width:14px;height:14px}
+.login-loja-v2 .ll-btn{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:9px 12px;border-radius:9px;
+  background:linear-gradient(135deg,var(--gold-500),var(--gold-600));
+  color:#1a1208;font-weight:600;font-size:12.5px;
+  border:none;cursor:pointer;
+  box-shadow:0 4px 14px rgba(200,155,60,.18);
+  transition:all .15s;
+}
+.login-loja-v2 .ll-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(200,155,60,.28)}
+.login-loja-v2 .ll-btn svg{width:13px;height:13px}
 .login-loja{
   display:flex;align-items:center;gap:11px;
   padding:14px 14px;text-align:left;
@@ -2063,6 +2110,34 @@ textarea.fld{resize:vertical;line-height:1.5}
 .board-col .ped-v2{font-size:12.5px}
 .board-col .ped-v2 .ped-itens-v2{max-height:120px}
 
+/* ACESSOS — credenciais das lojas */
+.acessos-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px;
+}
+.acesso-card{
+  background:linear-gradient(180deg, rgba(22,28,52,.5), rgba(13,17,32,.5));
+  border:1px solid var(--border);border-radius:14px;
+  padding:16px;display:flex;flex-direction:column;gap:12px;
+  transition:all .18s;
+}
+.acesso-card:hover{border-color:rgba(200,155,60,.3);box-shadow:0 12px 30px -12px rgba(0,0,0,.4)}
+.acesso-card .ac-head{display:flex;align-items:center;gap:11px}
+.acesso-card .ac-nome{font-size:14.5px;font-weight:600;color:#fff;letter-spacing:-.01em;line-height:1.1}
+.acesso-card .ac-local{font-size:10.5px;color:var(--ink-300);margin-top:3px;display:flex;align-items:center;gap:4px;text-transform:uppercase;letter-spacing:.08em}
+.acesso-card .ac-local svg{width:11px;height:11px}
+.acesso-card .ac-fields{display:flex;flex-direction:column;gap:8px;padding:10px 12px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.04);border-radius:10px}
+.acesso-card .ac-field{display:flex;flex-direction:column;gap:3px}
+.acesso-card .ac-lbl{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-400)}
+.acesso-card .ac-val-row{display:flex;align-items:center;gap:4px}
+.acesso-card .ac-val{
+  flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);
+  padding:6px 10px;border-radius:7px;font-size:13px;color:#fff;
+  font-family:'JetBrains Mono',monospace;letter-spacing:.04em;font-weight:500;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.acesso-card .ac-acoes{display:flex;gap:6px;flex-wrap:wrap}
+.mono{font-family:'JetBrains Mono',monospace}
+
 /* Editor de pedido da Diretoria */
 .eg-head{
   display:grid;grid-template-columns:80px 70px 1fr 36px;gap:8px;
@@ -2157,6 +2232,7 @@ textarea.fld{resize:vertical;line-height:1.5}
         <div class="nav-label">Pedidos</div>
         <button class="nav-item active" data-route="pedidos-colab" data-roles="Administrador,Diretoria"><i data-lucide="inbox"></i><span>Pedidos das lojas</span><span class="badge badge-alert badge-pulse" id="badgeColab">0</span></button>
         <button class="nav-item" data-route="lojas" data-roles="Administrador,Diretoria"><i data-lucide="store"></i><span>Lojas</span><span class="badge" id="badgeLojas">0</span></button>
+        <button class="nav-item" data-route="acessos" data-roles="Administrador,Diretoria"><i data-lucide="key-round"></i><span>Acessos</span></button>
       </div>
 
       <div class="nav-section" id="adminSection" data-roles="Administrador">
@@ -2297,6 +2373,7 @@ const Cloud = {
   _mapLoja(l) {
     return {
       id: l.id, codigo: l.codigo, nome: l.nome, localidade: l.localidade,
+      acessoId: l.acesso_id || '', senha: l.senha || '',
       criadoEm: l.criado_em,
       itens: (l.loja_itens || []).map(it => ({
         id: it.id, descricao: it.descricao,
@@ -2306,6 +2383,18 @@ const Cloud = {
         obs: it.obs||'', criadoEm: it.criado_em, historico: [],
       }))
     };
+  },
+  async atualizarSenhaLoja(lojaId, novaSenha){
+    if (!this.ok()) return false;
+    const { error } = await supa.from('lojas').update({ senha: novaSenha }).eq('id', lojaId);
+    if (error) { toast('Erro ao salvar senha', error.message, 'error'); return false; }
+    return true;
+  },
+  async atualizarAcessoLoja(lojaId, novoId){
+    if (!this.ok()) return false;
+    const { error } = await supa.from('lojas').update({ acesso_id: novoId }).eq('id', lojaId);
+    if (error) { toast('Erro ao salvar ID', error.message, 'error'); return false; }
+    return true;
   },
   _mapPedido(p) {
     return {
@@ -2889,20 +2978,55 @@ function pseudoUserLoja(loja) {
 function showLogin() {
   document.getElementById('login').style.display = 'flex';
   document.getElementById('app').classList.remove('active');
-  // Preenche a grade de lojas
+  // Preenche a grade de lojas — cada loja com seus campos de ID e senha
   const grid = document.getElementById('loginLojas');
   if (grid && state.lojas) {
     grid.innerHTML = state.lojas.map(l => `
-      <button class="login-loja" onclick="entrarComoLoja('${l.id}')">
-        <div class="login-loja-icon"><i data-lucide="store"></i></div>
-        <div style="min-width:0">
-          <div class="login-loja-name">${escapeHtml(l.nome.replace('Loja ',''))}</div>
-          <div class="login-loja-local">${escapeHtml(l.localidade)}</div>
+      <div class="login-loja-v2" data-loja="${l.id}">
+        <div class="ll-head">
+          <div class="login-loja-icon"><i data-lucide="store"></i></div>
+          <div style="min-width:0;flex:1">
+            <div class="login-loja-name">${escapeHtml(l.nome.replace('Loja ',''))}</div>
+            <div class="login-loja-local">${escapeHtml(l.localidade)}</div>
+          </div>
         </div>
-      </button>
+        <div class="ll-form">
+          <input type="text" class="ll-input" placeholder="ID de acesso" id="lid-${l.id}" autocomplete="off" onkeydown="if(event.key==='Enter')document.getElementById('lpw-${l.id}').focus()" />
+          <div class="ll-pwd">
+            <input type="password" class="ll-input" placeholder="Senha" id="lpw-${l.id}" autocomplete="off" onkeydown="if(event.key==='Enter')loginLoja('${l.id}')" />
+            <button class="ll-eye" type="button" onclick="togglePwd('lpw-${l.id}', this)" title="Mostrar/ocultar"><i data-lucide="eye"></i></button>
+          </div>
+          <button class="ll-btn" onclick="loginLoja('${l.id}')"><i data-lucide="log-in"></i>Entrar</button>
+        </div>
+      </div>
     `).join('');
   }
   setTimeout(()=>lucide.createIcons(),30);
+}
+
+function togglePwd(inputId, btn){
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  const showing = inp.type === 'text';
+  inp.type = showing ? 'password' : 'text';
+  btn.innerHTML = `<i data-lucide="${showing ? 'eye' : 'eye-off'}"></i>`;
+  lucide.createIcons();
+}
+
+async function loginLoja(lojaId){
+  const loja = state.lojas.find(l => l.id === lojaId);
+  if (!loja) { toast('Erro','Loja não encontrada','error'); return; }
+  const id = (document.getElementById(`lid-${lojaId}`)?.value || '').trim();
+  const senha = (document.getElementById(`lpw-${lojaId}`)?.value || '');
+  if (!id || !senha) { toast('Atenção','Preencha ID e senha','warning'); return; }
+  if (id.toUpperCase() !== (loja.acessoId||'').toUpperCase() || senha !== (loja.senha||'')) {
+    toast('Acesso negado','ID ou senha incorretos','error');
+    return;
+  }
+  state.user = pseudoUserLoja(loja);
+  await Storage.set('solys:session', { tipo:'loja', lojaId: loja.id, at: new Date().toISOString() });
+  await pushLog('login', `Entrada pela loja ${loja.nome}`, { loja: loja.nome });
+  enterApp();
 }
 
 function toggleAdminLogin() {
@@ -3168,6 +3292,8 @@ function seedLojas() {
     codigo: loja.codigo,
     nome: loja.nome,
     localidade: loja.localidade,
+    acessoId: (loja.codigo||'XXX').slice(0,3).toUpperCase() + Math.floor(1000+Math.random()*9000),
+    senha: 'Sgroup@2026#',
     criadoEm: new Date().toISOString(),
     itens: loja.itens.map(it => ({
       id: uid(),
@@ -3235,6 +3361,7 @@ function renderRoute() {
       case 'search': renderSearch(); break;
       case 'usuarios': renderUsuarios(); break;
       case 'configuracoes': renderConfig(); break;
+      case 'acessos': renderAcessos(); break;
       default: renderDashboard();
     }
     updateBadges();
@@ -6227,6 +6354,154 @@ function openUserModal() {
       return true;
     }
   });
+}
+
+/* ----------------------------------------------------------------
+   ACESSOS — credenciais de login das lojas (Diretoria/Admin)
+   ---------------------------------------------------------------- */
+function renderAcessos(){
+  const c = document.getElementById('content');
+  state._mostrarSenhas = state._mostrarSenhas || {};
+  c.innerHTML = `
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Acessos das lojas</h1>
+        <p class="page-sub">Credenciais de login de cada unidade · ${state.lojas.length} loja(s)</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn" onclick="copiarAcessosCSV()"><i data-lucide="clipboard-copy"></i>Copiar tudo</button>
+      </div>
+    </div>
+
+    <div class="acessos-grid">
+      ${state.lojas.map(l => {
+        const showPwd = state._mostrarSenhas[l.id];
+        const cIdx = lojaColorIdx(l.id);
+        return `<div class="acesso-card">
+          <div class="ac-head">
+            <div class="ped-store-ic c${cIdx}"><i data-lucide="store"></i></div>
+            <div style="min-width:0;flex:1">
+              <div class="ac-nome">${escapeHtml(l.nome)}</div>
+              <div class="ac-local"><i data-lucide="map-pin"></i>${escapeHtml(l.localidade)}</div>
+            </div>
+          </div>
+          <div class="ac-fields">
+            <div class="ac-field">
+              <div class="ac-lbl">ID de acesso</div>
+              <div class="ac-val-row">
+                <code class="ac-val mono">${escapeHtml(l.acessoId||'—')}</code>
+                <button class="icon-btn" onclick="copiarTexto('${escapeHtml(l.acessoId||'')}','ID')" title="Copiar"><i data-lucide="copy"></i></button>
+              </div>
+            </div>
+            <div class="ac-field">
+              <div class="ac-lbl">Senha</div>
+              <div class="ac-val-row">
+                <code class="ac-val mono">${showPwd ? escapeHtml(l.senha||'') : '•'.repeat((l.senha||'').length)}</code>
+                <button class="icon-btn" onclick="toggleMostrarSenha('${l.id}')" title="${showPwd?'Ocultar':'Mostrar'}"><i data-lucide="${showPwd?'eye-off':'eye'}"></i></button>
+                <button class="icon-btn" onclick="copiarTexto('${escapeHtml(l.senha||'')}','Senha')" title="Copiar"><i data-lucide="copy"></i></button>
+              </div>
+            </div>
+          </div>
+          <div class="ac-acoes">
+            <button class="qbtn" onclick="abrirEditarAcesso('${l.id}')"><i data-lucide="edit-3"></i>Editar credenciais</button>
+            <button class="qbtn" onclick="resetarSenhaLoja('${l.id}')"><i data-lucide="rotate-cw"></i>Reset</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title"><i data-lucide="info" style="width:14px;height:14px;display:inline-block;vertical-align:-2px;color:var(--gold-400)"></i> Como funciona</div>
+          <div class="panel-sub">Compartilhe o ID e a senha com o responsável da loja</div>
+        </div>
+      </div>
+      <ol style="padding-left:20px;font-size:13px;line-height:1.85;color:var(--ink-200)">
+        <li>Cada loja tem um <b style="color:var(--gold-300)">ID único</b> gerado automaticamente.</li>
+        <li>A senha padrão é <code class="mono">Sgroup@2026#</code> — pode ser alterada por loja em "Editar credenciais".</li>
+        <li>O colaborador da loja entra na tela de login, seleciona a unidade, digita ID e senha.</li>
+        <li>Se trocar a senha, somente a Diretoria vê a nova credencial aqui.</li>
+      </ol>
+    </div>
+  `;
+  setTimeout(()=>lucide.createIcons(), 30);
+}
+
+function toggleMostrarSenha(lojaId){
+  state._mostrarSenhas[lojaId] = !state._mostrarSenhas[lojaId];
+  renderAcessos();
+}
+
+function copiarTexto(txt, label){
+  if (!txt) return;
+  navigator.clipboard.writeText(txt).then(()=>{
+    toast(`${label} copiado`, txt, 'success');
+  });
+}
+
+function copiarAcessosCSV(){
+  const linhas = ['Loja,Localidade,ID,Senha'];
+  state.lojas.forEach(l => linhas.push(`"${l.nome}","${l.localidade}","${l.acessoId}","${l.senha}"`));
+  navigator.clipboard.writeText(linhas.join('\n')).then(()=>{
+    toast('Acessos copiados', `${state.lojas.length} lojas no clipboard`, 'success');
+  });
+}
+
+function abrirEditarAcesso(lojaId){
+  const l = state.lojas.find(x => x.id === lojaId);
+  if (!l) return;
+  openModal({
+    title:`Editar acesso · ${l.nome}`,
+    body:`
+      <label class="fld-label">ID de acesso</label>
+      <input type="text" id="acIdNovo" class="fld" value="${escapeHtml(l.acessoId||'')}" />
+      <label class="fld-label" style="margin-top:12px">Senha</label>
+      <input type="text" id="acSenhaNova" class="fld mono" value="${escapeHtml(l.senha||'')}" />
+      <div style="margin-top:8px;font-size:11.5px;color:var(--ink-300)">A senha pode conter letras, números e símbolos.</div>
+    `,
+    actions:`
+      <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn gold" onclick="salvarEditarAcesso('${lojaId}')"><i data-lucide="save"></i>Salvar</button>
+    `
+  });
+  setTimeout(()=>lucide.createIcons(),50);
+}
+
+async function salvarEditarAcesso(lojaId){
+  const l = state.lojas.find(x => x.id === lojaId);
+  if (!l) return;
+  const novoId = (document.getElementById('acIdNovo').value||'').trim().toUpperCase();
+  const novaSenha = document.getElementById('acSenhaNova').value || '';
+  if (!novoId) { toast('Atenção','ID não pode ficar vazio','warning'); return; }
+  if (!novaSenha || novaSenha.length < 4) { toast('Atenção','Senha precisa de pelo menos 4 caracteres','warning'); return; }
+  // Verifica conflito de id
+  if (state.lojas.find(x => x.id !== lojaId && (x.acessoId||'').toUpperCase() === novoId)) {
+    toast('Conflito','Esse ID já está em uso por outra loja','error'); return;
+  }
+  l.acessoId = novoId;
+  l.senha = novaSenha;
+  if (Cloud.ok()) {
+    await Cloud.atualizarAcessoLoja(lojaId, novoId);
+    await Cloud.atualizarSenhaLoja(lojaId, novaSenha);
+  }
+  await Storage.set('solys:lojas', state.lojas);
+  await pushLog('loja-acesso', `Credenciais de ${l.nome} atualizadas`);
+  closeModal();
+  toast('Credenciais salvas', l.nome, 'success');
+  renderAcessos();
+}
+
+async function resetarSenhaLoja(lojaId){
+  const l = state.lojas.find(x => x.id === lojaId);
+  if (!l) return;
+  if (!confirm(`Resetar a senha de ${l.nome} para o padrão "Sgroup@2026#"?`)) return;
+  l.senha = 'Sgroup@2026#';
+  if (Cloud.ok()) await Cloud.atualizarSenhaLoja(lojaId, l.senha);
+  await Storage.set('solys:lojas', state.lojas);
+  await pushLog('loja-acesso', `Senha de ${l.nome} resetada ao padrão`);
+  toast('Senha resetada', l.nome, 'info');
+  renderAcessos();
 }
 
 /* ----------------------------------------------------------------
