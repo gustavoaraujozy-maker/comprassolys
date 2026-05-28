@@ -1111,6 +1111,93 @@ table.data tbody tr:last-child td{border-bottom:none}
 }
 .ref-desc{color:var(--ink-100)}
 
+/* ===== HISTÓRICO ANUAL — grid de meses ===== */
+.year-panel{margin-bottom:14px}
+.year-panel header{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:6px 4px 12px;flex-wrap:wrap;
+}
+.year-title{display:flex;align-items:center;gap:10px}
+.year-title h3{font-family:'Outfit';font-size:18px;font-weight:600;color:#fff;letter-spacing:-.02em}
+.year-title .yr-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 9px;border-radius:99px;font-size:10.5px;font-weight:700;
+  background:linear-gradient(135deg, rgba(200,155,60,.18), rgba(200,155,60,.05));
+  border:1px solid rgba(200,155,60,.3);color:var(--gold-300);
+  letter-spacing:.08em;text-transform:uppercase;
+}
+.year-title .yr-now{background:linear-gradient(135deg,var(--gold-500),var(--gold-600));color:#1a1208;border-color:transparent}
+.year-sub{font-size:11.5px;color:var(--ink-300);margin-top:2px}
+.year-collapse-btn{font-size:11px;color:var(--ink-300);cursor:pointer;display:flex;align-items:center;gap:5px}
+.year-collapse-btn svg{width:13px;height:13px;transition:transform .2s}
+.year-collapse-btn.col svg{transform:rotate(-90deg)}
+
+.month-grid{
+  display:grid;grid-template-columns:repeat(12, 1fr);gap:6px;
+}
+@media(max-width:1100px){.month-grid{grid-template-columns:repeat(6, 1fr)}}
+@media(max-width:640px){.month-grid{grid-template-columns:repeat(4, 1fr)}}
+@media(max-width:420px){.month-grid{grid-template-columns:repeat(3, 1fr)}}
+.month-card{
+  position:relative;
+  padding:10px 8px;
+  background:linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.005));
+  border:1px solid var(--border);
+  border-radius:10px;text-align:center;cursor:pointer;
+  transition:all .15s;
+  min-height:64px;display:flex;flex-direction:column;justify-content:center;
+}
+.month-card:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.14)}
+.month-card .mc-name{
+  font-size:10.5px;font-weight:600;color:var(--ink-300);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px;
+}
+.month-card .mc-val{
+  font-family:'Outfit';font-size:18px;font-weight:600;color:#fff;letter-spacing:-.02em;line-height:1;
+}
+.month-card .mc-sub{font-size:10px;color:var(--ink-400);margin-top:2px}
+.month-card.empty .mc-val{color:var(--ink-500)}
+.month-card.empty .mc-sub{color:var(--ink-500)}
+.month-card.has-data{border-color:rgba(46,116,201,.25);background:linear-gradient(180deg, rgba(46,116,201,.08), rgba(46,116,201,.02))}
+.month-card.has-data .mc-val{color:#7eb3f0}
+.month-card.atual{
+  border-color:rgba(200,155,60,.5);
+  background:linear-gradient(180deg, rgba(200,155,60,.14), rgba(200,155,60,.03));
+  box-shadow:0 0 0 1px rgba(200,155,60,.18);
+}
+.month-card.atual .mc-name{color:var(--gold-300)}
+.month-card.atual .mc-val{color:var(--gold-400)}
+.month-card.atual::after{
+  content:'';position:absolute;top:6px;right:6px;
+  width:5px;height:5px;background:var(--gold-500);border-radius:50%;
+  box-shadow:0 0 6px var(--gold-500);
+}
+.month-card.sel{
+  border-color:var(--gold-500);
+  background:linear-gradient(180deg, rgba(200,155,60,.22), rgba(200,155,60,.05));
+  box-shadow:0 0 0 2px rgba(200,155,60,.18), 0 6px 16px rgba(0,0,0,.3);
+  transform:translateY(-1px);
+}
+.month-card.sel .mc-val{color:#fff}
+
+.month-detail{
+  margin-top:12px;
+  background:rgba(0,0,0,.22);
+  border:1px solid rgba(200,155,60,.18);
+  border-radius:12px;
+  padding:16px;
+  animation:slideDown .25s cubic-bezier(.16,1,.3,1);
+}
+.month-detail header{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:0 0 14px;border-bottom:1px solid var(--border);margin-bottom:14px;
+}
+.month-detail .md-title{font-family:'Outfit';font-size:15px;font-weight:600;color:#fff}
+.month-detail .md-title b{color:var(--gold-300)}
+.month-detail .md-sub{font-size:11.5px;color:var(--ink-300);margin-top:2px}
+.month-detail .md-empty{padding:24px;text-align:center;color:var(--ink-400);font-size:13px;font-style:italic}
+.year-panel-body.collapsed{display:none}
+
 /* ===== PEDIDOS — cards ===== */
 .pedidos-list{display:flex;flex-direction:column;gap:12px}
 .pedido-card{
@@ -4245,6 +4332,54 @@ function pedidosDaLoja(lojaId) {
     .sort((a,b) => new Date(b.criadoEm) - new Date(a.criadoEm));
 }
 
+/* Constrói o histórico ANO → MÊS → ITENS da loja.
+   Combina os pedidos enviados + a planilha SISTEMA_SOLYS_COMPRAS (loja.itens).
+   Pedidos vencem em caso de dúvida (somarPedidoNaGradeLoja mantém a grade
+   sincronizada com pedidos do ano corrente). */
+function historicoAnualLoja(loja){
+  if (!loja) return {};
+  const anoAtual = new Date().getFullYear();
+  const out = {};
+
+  // 1) Pedidos (qualquer ano, agrupados por ano/mês)
+  state.pedidos.filter(p => p.lojaId === loja.id).forEach(p => {
+    const d = new Date(p.data);
+    if (isNaN(d)) return;
+    const ano = d.getFullYear();
+    const mes = MESES[d.getMonth()];
+    out[ano] = out[ano] || {};
+    out[ano][mes] = out[ano][mes] || { itens:{}, pedidos:[] };
+    out[ano][mes].pedidos.push(p);
+    p.itens.forEach(it => {
+      const k = (it.descricao||'').toUpperCase().trim();
+      if (!k) return;
+      if (!out[ano][mes].itens[k]) out[ano][mes].itens[k] = { descricao:k, quantidade:0, unidade:it.unidade||'un' };
+      out[ano][mes].itens[k].quantidade += (it.quantidade|0);
+    });
+  });
+
+  // 2) Planilha do ano corrente (loja.itens) — usada quando não há pedido naquele mês
+  out[anoAtual] = out[anoAtual] || {};
+  loja.itens.forEach(it => {
+    MESES.forEach(m => {
+      const q = it[m]|0;
+      if (q <= 0) return;
+      out[anoAtual][m] = out[anoAtual][m] || { itens:{}, pedidos:[] };
+      const k = (it.descricao||'').toUpperCase().trim();
+      // Se já existe via pedido, não duplica
+      if (out[anoAtual][m].itens[k]) return;
+      out[anoAtual][m].itens[k] = { descricao:k, quantidade:q, unidade:'un' };
+    });
+  });
+
+  // Garante todos os 12 meses no ano corrente, mesmo vazios
+  MESES.forEach(m => {
+    if (!out[anoAtual][m]) out[anoAtual][m] = { itens:{}, pedidos:[] };
+  });
+
+  return out;
+}
+
 // Referência do "mês anterior": último pedido feito pela loja,
 // ou, se não houver, os itens do mês anterior no controle mensal da loja
 function referenciaMesAnterior(loja) {
@@ -4332,34 +4467,8 @@ function renderMinhaLista() {
       </div>
     </div>
 
-    <!-- REFERÊNCIA MÊS ANTERIOR / HISTÓRICO DA LOJA -->
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <div class="panel-title"><i data-lucide="history" style="width:15px;height:15px;display:inline-block;vertical-align:-2px;color:var(--gold-400)"></i> Histórico da loja — ${ref ? (ref.tipo==='pedido' ? `último pedido (${fmt.date(ref.pedido.data)})` : `referência ${MES_NOME[ref.mesIdx]}`) : '—'}</div>
-          <div class="panel-sub">${ref
-            ? (ref.tipo === 'pedido'
-                ? `Solicitado por ${escapeHtml(ref.pedido.solicitante)} · ${ref.itens.length} itens`
-                : `Itens da planilha de ${MES_NOME[ref.mesIdx]} · ${ref.itens.length} itens · sirva como base para o pedido deste mês`)
-            : 'Esta loja ainda não tem histórico'}</div>
-        </div>
-        ${ref ? `<button class="btn gold" onclick="abrirNovoPedido()"><i data-lucide="copy"></i>Fazer pedido com base nisso</button>` : ''}
-      </div>
-      ${ref ? `
-        <div class="ref-grid">
-          ${ref.itens.map(it => `
-            <div class="ref-item">
-              <span class="ref-qtd">${it.quantidade}${it.unidade && it.unidade!=='un' ? ' '+escapeHtml(it.unidade) : ''}</span>
-              <span class="ref-desc">${escapeHtml(it.descricao)}</span>
-            </div>
-          `).join('')}
-        </div>
-        <div style="margin-top:12px;font-size:11.5px;color:var(--ink-300);display:flex;align-items:center;gap:6px">
-          <i data-lucide="info" style="width:12px;height:12px"></i>
-          Ao clicar em <b style="color:var(--gold-300)">"Fazer novo pedido"</b> esses itens já vêm preenchidos — você só ajusta as quantidades e envia.
-        </div>
-      ` : `<div class="empty-state"><i data-lucide="package"></i><p>Esta loja ainda não tem pedidos registrados.<br><small>Clique em "Fazer novo pedido" para começar.</small></p></div>`}
-    </div>
+    <!-- HISTÓRICO ANUAL — um painel por ano, 12 meses por painel -->
+    ${renderHistoricoAnual(loja)}
 
     <!-- MEUS PEDIDOS -->
     <div class="panel" style="margin-top:16px">
@@ -4377,6 +4486,152 @@ function renderMinhaLista() {
 /* PEDIDO CARD V2 — premium card para o colaborador ver seus pedidos */
 function renderPedidoCard(p, podeEditar) {
   return renderPedidoCardV2(p, { podeEditar, modo:'colab' });
+}
+
+/* HISTÓRICO ANUAL — renderiza um painel por ano com 12 meses clicáveis.
+   O ano corrente fica primeiro e expandido; anos anteriores vêm depois. */
+function renderHistoricoAnual(loja){
+  const hist = historicoAnualLoja(loja);
+  const anoAtual = new Date().getFullYear();
+  const mesAtualIdx = new Date().getMonth();
+  const anos = Object.keys(hist).map(Number).sort((a,b)=>b-a); // mais recente primeiro
+  if (!anos.length) {
+    return `<div class="panel"><div class="empty-state"><i data-lucide="package"></i><h3>Sem histórico</h3><p>Esta loja ainda não tem pedidos. Clique em <b>"Fazer novo pedido"</b> para começar.</p></div></div>`;
+  }
+
+  state._mesSelLojas = state._mesSelLojas || {};
+  state._anoColLojas = state._anoColLojas || {}; // colapso por ano
+
+  return anos.map(ano => {
+    const meses = hist[ano] || {};
+    const totalAno = MESES.reduce((s,m)=>{
+      const it = meses[m]?.itens || {};
+      return s + Object.values(it).reduce((a,i)=>a+(i.quantidade||0),0);
+    },0);
+    const mesesComDados = MESES.filter(m=>{
+      const it = meses[m]?.itens || {}; return Object.keys(it).length > 0;
+    }).length;
+    const selKey = `${loja.id}:${ano}`;
+    const colKey = selKey;
+    const sel = state._mesSelLojas[selKey]; // mes selecionado
+    const collapsed = state._anoColLojas[colKey] === true;
+    const isAtual = ano === anoAtual;
+
+    // detalhe do mês selecionado
+    let detalheHtml = '';
+    if (sel && meses[sel]) {
+      const itensObj = meses[sel].itens || {};
+      const itensArr = Object.values(itensObj).sort((a,b)=>b.quantidade-a.quantidade);
+      const pedidosMes = meses[sel].pedidos || [];
+      const totalUn = itensArr.reduce((s,i)=>s+(i.quantidade||0),0);
+      detalheHtml = `
+        <div class="month-detail">
+          <header>
+            <div>
+              <div class="md-title"><b>${MES_NOME[MESES.indexOf(sel)]} / ${ano}</b> · ${itensArr.length} itens · ${totalUn} un.</div>
+              <div class="md-sub">${pedidosMes.length ? `${pedidosMes.length} pedido${pedidosMes.length>1?'s':''} feito${pedidosMes.length>1?'s':''} pela loja` : 'Referência da planilha SISTEMA_SOLYS_COMPRAS'}</div>
+            </div>
+            ${itensArr.length ? `<button class="btn gold" onclick="abrirPedidoComBaseEmMes('${loja.id}','${ano}','${sel}')"><i data-lucide="copy"></i>Fazer pedido com base neste mês</button>` : ''}
+          </header>
+          ${itensArr.length ? `
+            <div class="ref-grid">
+              ${itensArr.map(it => `
+                <div class="ref-item">
+                  <span class="ref-qtd">${it.quantidade}${it.unidade && it.unidade!=='un' ? ' '+escapeHtml(it.unidade) : ''}</span>
+                  <span class="ref-desc">${escapeHtml(it.descricao)}</span>
+                </div>
+              `).join('')}
+            </div>
+            ${pedidosMes.length ? `
+              <div style="margin-top:14px">
+                <div class="muted" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px">Pedidos individuais deste mês</div>
+                <div class="ped-grid">
+                  ${pedidosMes.map(p => renderPedidoCardV2(p, { modo:'colab', podeEditar: p.status==='Pendente' })).join('')}
+                </div>
+              </div>
+            ` : ''}
+          ` : `<div class="md-empty">Nenhum item registrado em ${MES_NOME[MESES.indexOf(sel)]} de ${ano}.</div>`}
+        </div>
+      `;
+    }
+
+    return `
+      <div class="panel year-panel">
+        <header>
+          <div class="year-title">
+            <h3><i data-lucide="calendar-days" style="width:18px;height:18px;display:inline-block;vertical-align:-3px;color:var(--gold-400)"></i> Histórico ${ano}</h3>
+            <span class="yr-badge ${isAtual?'yr-now':''}">${isAtual?'Atual':'Encerrado'}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="text-align:right">
+              <div style="font-family:'Outfit';font-size:20px;font-weight:600;color:#fff;letter-spacing:-.02em;line-height:1">${totalAno}</div>
+              <div class="year-sub">${mesesComDados}/12 meses · ${totalAno} un. no ano</div>
+            </div>
+            <span class="year-collapse-btn ${collapsed?'col':''}" onclick="toggleAnoCol('${colKey}')">
+              <i data-lucide="chevron-down"></i>
+            </span>
+          </div>
+        </header>
+        <div class="year-panel-body ${collapsed?'collapsed':''}">
+          <div class="month-grid">
+            ${MESES.map((m,i) => {
+              const it = meses[m]?.itens || {};
+              const qtd = Object.values(it).reduce((a,b)=>a+(b.quantidade||0),0);
+              const nItens = Object.keys(it).length;
+              const isAtualMes = isAtual && i === mesAtualIdx;
+              const isSel = sel === m;
+              const hasData = nItens > 0;
+              const cls = [
+                'month-card',
+                !hasData ? 'empty' : 'has-data',
+                isAtualMes ? 'atual' : '',
+                isSel ? 'sel' : ''
+              ].filter(Boolean).join(' ');
+              return `<div class="${cls}" onclick="selecionarMesLoja('${loja.id}','${ano}','${m}')">
+                <div class="mc-name">${MESES_LABEL[i]}</div>
+                <div class="mc-val">${qtd}</div>
+                <div class="mc-sub">${nItens ? nItens+' itens' : '—'}</div>
+              </div>`;
+            }).join('')}
+          </div>
+          ${detalheHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selecionarMesLoja(lojaId, ano, mes){
+  state._mesSelLojas = state._mesSelLojas || {};
+  const key = `${lojaId}:${ano}`;
+  // Toggle: clicar no mesmo mês fecha o detalhe
+  if (state._mesSelLojas[key] === mes) delete state._mesSelLojas[key];
+  else state._mesSelLojas[key] = mes;
+  renderMinhaLista();
+  setTimeout(()=>lucide.createIcons(),30);
+}
+
+function toggleAnoCol(colKey){
+  state._anoColLojas = state._anoColLojas || {};
+  state._anoColLojas[colKey] = !state._anoColLojas[colKey];
+  renderMinhaLista();
+  setTimeout(()=>lucide.createIcons(),30);
+}
+
+function abrirPedidoComBaseEmMes(lojaId, ano, mes){
+  const loja = state.lojas.find(l => l.id === lojaId);
+  if (!loja) return;
+  const hist = historicoAnualLoja(loja);
+  const itensObj = hist[ano]?.[mes]?.itens || {};
+  const itens = Object.values(itensObj);
+  if (!itens.length) { toast('Sem itens','Nada para copiar deste mês','warning'); return; }
+  // injeta itens como rascunho e abre o formulário
+  state._pedidoItensBase = itens.map(i => ({
+    descricao: i.descricao,
+    quantidade: i.quantidade||1,
+    unidade: i.unidade||'un'
+  }));
+  abrirNovoPedido();
 }
 
 /* hash colorista determinístico para avatares de loja */
@@ -4484,13 +4739,17 @@ function abrirNovoPedido(editId) {
   const editando = editId ? state.pedidos.find(p => p.id === editId) : null;
 
   // itens em edição (cópia de trabalho)
-  // Se for pedido NOVO: pré-preenche com o histórico da loja
-  // (último pedido OU itens do mês anterior na planilha SISTEMA_SOLYS_COMPRAS)
-  if (editando) {
+  // Prioridade: 1) base explícita (vinda de "Fazer pedido com base neste mês")
+  //             2) pedido em edição
+  //             3) referência do último pedido / planilha
+  if (state._pedidoItensBase && state._pedidoItensBase.length) {
+    state._pedidoItens = state._pedidoItensBase.map(i => ({...i}));
+    state._pedidoItensBase = null;
+  } else if (editando) {
     state._pedidoItens = editando.itens.map(i => ({...i}));
   } else {
     const ref = referenciaMesAnterior(loja);
-    if (ref && ref.itens.length) {
+    if (ref && ref.itens && ref.itens.length) {
       state._pedidoItens = ref.itens.map(i => ({
         descricao: i.descricao,
         quantidade: i.quantidade,
