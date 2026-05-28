@@ -4071,28 +4071,17 @@ function renderLojas() {
         <div><div class="panel-title">Resumo por loja</div><div class="panel-sub">Clique em uma loja para ver e editar os itens</div></div>
       </div>
       <div class="lojas-grid">
-        ${state.lojas.map(l => {
-          const tMai = lojaTotalMes(l,'mai');
-          const tAno = lojaTotalAno(l);
-          const tNow = lojaTotalMes(l, mesNow);
-          return `
-            <div class="loja-card" onclick="openLoja('${l.id}')">
-              <div class="loja-card-head">
-                <div class="loja-icon"><i data-lucide="store"></i></div>
-                <div style="flex:1;min-width:0">
-                  <div class="loja-name">${escapeHtml(l.nome)}</div>
-                  <div class="loja-local"><i data-lucide="map-pin" style="width:11px;height:11px;display:inline-block;vertical-align:-1px"></i> ${escapeHtml(l.localidade)}</div>
-                </div>
-                <i data-lucide="chevron-right" class="loja-arrow"></i>
+        ${state.lojas.map(l => `
+          <div class="loja-card" onclick="openLoja('${l.id}')">
+            <div class="loja-card-head" style="margin-bottom:0">
+              <div class="loja-icon"><i data-lucide="store"></i></div>
+              <div style="flex:1;min-width:0">
+                <div class="loja-name">${escapeHtml(l.nome)}</div>
+                <div class="loja-local"><i data-lucide="map-pin" style="width:11px;height:11px;display:inline-block;vertical-align:-1px"></i> ${escapeHtml(l.localidade)}</div>
               </div>
-              <div class="loja-stats">
-                <div class="loja-stat"><span class="loja-stat-label">Itens</span><span class="loja-stat-val">${l.itens.length}</span></div>
-                <div class="loja-stat"><span class="loja-stat-label">${MESES_LABEL[MESES.indexOf(mesNow)]}</span><span class="loja-stat-val gold">${tNow}</span></div>
-                <div class="loja-stat"><span class="loja-stat-label">Mai</span><span class="loja-stat-val">${tMai}</span></div>
-                <div class="loja-stat"><span class="loja-stat-label">Ano</span><span class="loja-stat-val">${tAno}</span></div>
-              </div>
-            </div>`;
-        }).join('')}
+              <i data-lucide="chevron-right" class="loja-arrow"></i>
+            </div>
+          </div>`).join('')}
       </div>
     </div>
 
