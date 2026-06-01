@@ -6348,7 +6348,7 @@ function renderPedidoCardV2(p, opts={}){
   }
   if (modo === 'gestao') {
     quickActions += `<button class="qbtn" onclick="editarPedidoGestao('${p.id}')" title="Editar"><i data-lucide="edit-3"></i></button>`;
-    quickActions += `<button class="qbtn" onclick="baixarPedidoWord('${p.id}')" title="Baixar Word"><i data-lucide="file-text"></i></button>`;
+    quickActions += `<button class="qbtn" onclick="baixarPedidoWord('${p.id}')" title="Baixar PDF"><i data-lucide="file-text"></i></button>`;
     quickActions += `<button class="qbtn" onclick="abrirDetalhePedido('${p.id}')" title="Detalhes"><i data-lucide="eye"></i></button>`;
   }
 
@@ -6767,288 +6767,228 @@ async function salvarEdicaoGestao(id){
 
 /* BAIXAR Word — documento corporativo padronizado (Word/LibreOffice) */
 function baixarPedidoWord(id){
+  // Mantém o nome da função pra preservar todas as chamadas existentes,
+  // mas agora gera PDF real (jsPDF) em vez de Word.
   const p = state.pedidos.find(x => x.id === id);
   if (!p) return;
+  const { jsPDF } = window.jspdf;
   const mes = MES_NOME[isoToMesIdx(p.data)];
   const ano = isoToAno(p.data);
   const mesIdx = isoToMesIdx(p.data);
   const totalUn = p.itens.reduce((s,i)=>s+(i.quantidade||0),0);
-
-  // Número de protocolo: SOL-AAAA-MM-XXXX (4 últimos dígitos do id em base36)
   const proto = `SOL-${ano}-${String(mesIdx+1).padStart(2,'0')}-${(p.id||'').replace(/-/g,'').slice(-6).toUpperCase()}`;
   const dataEmissao = new Date(p.criadoEm).toLocaleDateString('pt-BR');
   const horaEmissao = new Date(p.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  // Endereço completo (vem do cadastro da loja). Fallback: localidade.
   const lojaAtual = state.lojas.find(l => l.id === p.lojaId);
   const enderecoCompleto = (lojaAtual?.endereco || p.lojaLocal || '—');
-
-  // Histórico de movimentação relevante (status changes)
   const movs = (p.historico||[]).filter(h => (h.action||'').includes('→')).slice(-5);
 
-  const html = `
-<!DOCTYPE html>
-<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-<head>
-<meta charset="utf-8" />
-<title>${escapeHtml(proto)} - ${escapeHtml(p.lojaNome)}</title>
-<!--[if gte mso 9]>
-<xml>
-  <w:WordDocument>
-    <w:View>Print</w:View>
-    <w:Zoom>100</w:Zoom>
-    <w:DoNotOptimizeForBrowser/>
-  </w:WordDocument>
-</xml>
-<![endif]-->
-<style>
-  @page { size: A4; margin: 2.5cm 2.2cm 2.2cm 2.2cm; }
-  body {
-    font-family: 'Calibri', Arial, sans-serif;
-    color:#000;
-    font-size:11pt;
-    line-height:1.45;
-  }
-  table { border-collapse: collapse; }
+  // Cores institucionais
+  const NAVY = [10, 61, 124];
+  const GOLD = [193, 148, 56];
+  const DARK = [17, 24, 39];
+  const MUTED = [107, 114, 128];
+  const LIGHT = [245, 247, 250];
+  const GREY = [213, 220, 230];
 
-  /* === CABEÇALHO === */
-  .header {
-    text-align:center;
-    padding-bottom:14pt;
-    border-bottom: 2pt solid #0A3D7C;
-    margin-bottom: 4pt;
-  }
-  .brand-name {
-    font-family:'Arial Black','Arial',sans-serif;
-    font-size: 28pt; font-weight:900;
-    color:#0A3D7C; letter-spacing:6pt;
-    margin:0; line-height:1;
-  }
-  .brand-tag {
-    font-size: 8.5pt;
-    color:#000;
-    letter-spacing: 4pt;
-    margin-top: 5pt;
-    text-transform: uppercase;
-    font-weight: 500;
-  }
-  .gold-line {
-    border-bottom: 0.5pt solid #C89B3C;
-    margin: 0 0 22pt 0;
-    height:0; line-height:0;
-  }
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 18;
 
-  /* === TÍTULO DO DOCUMENTO === */
-  .doc-title {
-    text-align:center;
-    margin-bottom: 24pt;
-  }
-  .doc-title h1 {
-    font-size: 14pt; font-weight:700;
-    color:#000; letter-spacing: 3pt;
-    margin: 0;
-    text-transform: uppercase;
-  }
-  .doc-title .proto {
-    font-size: 10pt; color:#444;
-    margin-top: 6pt;
-    font-family: 'Calibri', Arial, sans-serif;
-  }
+  // === CABEÇALHO ===
+  doc.setFillColor(...NAVY);
+  doc.rect(0, 0, W, 28, 'F');
+  // faixa dourada
+  doc.setFillColor(...GOLD);
+  doc.rect(0, 28, W, 1.5, 'F');
 
-  /* === SEÇÕES === */
-  h2.sec {
-    font-size: 11pt;
-    font-weight:700;
-    color:#0A3D7C;
-    margin: 18pt 0 10pt;
-    padding-bottom: 4pt;
-    border-bottom: 1pt solid #0A3D7C;
-    text-transform: uppercase;
-    letter-spacing: 1.5pt;
-  }
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.text('SOLYS', M, 14);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...GOLD);
+  doc.text('LOGÍSTICA DE COMPRAS', M, 19);
 
-  /* === DADOS DO PEDIDO === */
-  .info { width:100%; }
-  .info td { padding: 5pt 0; font-size: 11pt; vertical-align: top; }
-  .info .lbl { width: 32%; color:#444; font-weight:600; }
-  .info .val { color:#000; }
-  .info .val b { color:#000; }
+  // Lado direito do header
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('PEDIDO DE COMPRAS', W - M, 12, { align: 'right' });
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(9);
+  doc.text(`Nº ${proto}`, W - M, 17, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text(`Emitido em ${dataEmissao} às ${horaEmissao}`, W - M, 21, { align: 'right' });
 
-  /* === TABELA DE ITENS === */
-  table.items {
-    width:100%;
-    border-top: 1pt solid #0A3D7C;
-    border-bottom: 1pt solid #0A3D7C;
-    margin-top: 4pt;
-  }
-  table.items th {
-    text-align:left;
-    padding: 7pt 8pt;
-    font-size: 10pt;
-    font-weight: 700;
-    color: #0A3D7C;
-    border-bottom: 1pt solid #0A3D7C;
-    text-transform: uppercase;
-    letter-spacing: 1pt;
-  }
-  table.items td {
-    padding: 6pt 8pt;
-    font-size: 11pt;
-    color:#000;
-    border-bottom: 0.5pt solid #d4d8e0;
-    vertical-align: top;
-  }
-  table.items tr:last-child td { border-bottom: none; }
-  table.items .num { text-align:center; width:34pt; color:#555; font-weight:500; }
-  table.items .qtd { text-align:center; width:50pt; font-weight:700; }
-  table.items .un  { text-align:center; width:48pt; color:#555; }
+  let y = 38;
 
-  .total-line {
-    margin-top: 10pt;
-    text-align: right;
-    font-size: 11pt;
-    color: #000;
-  }
-  .total-line b {
-    font-weight: 700;
-    color:#0A3D7C;
-  }
+  // === SEÇÃO: DADOS DO PEDIDO ===
+  const drawSection = (title) => {
+    doc.setFillColor(...LIGHT);
+    doc.rect(M, y, W - M*2, 7, 'F');
+    doc.setFillColor(...GOLD);
+    doc.rect(M, y, 1.5, 7, 'F');
+    doc.setTextColor(...NAVY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(title.toUpperCase(), M + 4, y + 4.8);
+    y += 11;
+  };
 
-  /* === OBSERVAÇÃO / RESPOSTA === */
-  .text-box {
-    padding: 4pt 0 0;
-    font-size: 11pt;
-    color: #000;
-    line-height: 1.55;
+  drawSection('Dados do Pedido');
+  const info = [
+    ['Unidade Solicitante', p.lojaNome || '—'],
+    ['Endereço',            enderecoCompleto],
+    ['Solicitante',         p.solicitante || '—'],
+    ['Mês de Referência',   `${mes} de ${ano}`],
+    ['Data de Emissão',     `${dataEmissao} às ${horaEmissao}`],
+    ['Situação',            p.status || '—'],
+  ];
+  doc.setFontSize(10);
+  for (const [k, v] of info) {
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...MUTED);
+    doc.text(`${k}:`, M, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...DARK);
+    const lines = doc.splitTextToSize(String(v), W - M - 60);
+    doc.text(lines, M + 50, y);
+    y += Math.max(5.5, lines.length * 5.5);
+  }
+  y += 4;
+
+  // === SEÇÃO: PRODUTOS ===
+  drawSection('Relação de Produtos');
+  doc.autoTable({
+    startY: y,
+    margin: { left: M, right: M },
+    head: [['Item', 'Qtd.', 'Un.', 'Descrição do Produto']],
+    body: p.itens.map((it, i) => [
+      String(i + 1).padStart(2, '0'),
+      String(it.quantidade),
+      it.unidade || 'un',
+      it.descricao,
+    ]),
+    foot: [[
+      '',
+      { content: String(totalUn), styles: { halign: 'center', textColor: GOLD, fontStyle: 'bold' } },
+      '',
+      { content: `Total de unidades · ${p.itens.length} produto${p.itens.length > 1 ? 's' : ''}`,
+        styles: { fontStyle: 'bold', textColor: NAVY } },
+    ]],
+    styles: {
+      font: 'helvetica', fontSize: 9, cellPadding: 2.8,
+      lineColor: GREY, lineWidth: 0.1, textColor: DARK,
+    },
+    headStyles: {
+      fillColor: NAVY, textColor: 255, fontStyle: 'bold',
+      halign: 'left', cellPadding: 3, fontSize: 8.5,
+    },
+    footStyles: { fillColor: LIGHT, lineWidth: { top: 0.5 } },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 14, textColor: MUTED },
+      1: { halign: 'center', cellWidth: 16, fontStyle: 'bold' },
+      2: { halign: 'center', cellWidth: 14, textColor: MUTED },
+      3: { halign: 'left' },
+    },
+    alternateRowStyles: { fillColor: [249, 250, 252] },
+  });
+  y = doc.lastAutoTable.finalY + 6;
+
+  // === OBSERVAÇÕES ===
+  if (p.observacao) {
+    drawSection('Observações');
+    doc.setFillColor(255, 251, 235);
+    doc.setDrawColor(...GOLD);
+    const obsLines = doc.splitTextToSize(p.observacao, W - M*2 - 6);
+    const obsH = Math.max(10, obsLines.length * 5 + 4);
+    doc.rect(M, y, W - M*2, obsH, 'F');
+    doc.setLineWidth(1.5);
+    doc.line(M, y, M, y + obsH);
+    doc.setLineWidth(0.1);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(...DARK);
+    doc.setFontSize(10);
+    doc.text(obsLines, M + 4, y + 6);
+    y += obsH + 5;
   }
 
-  /* === ASSINATURAS === */
-  .signatures {
-    margin-top: 56pt;
-    width:100%;
-    page-break-inside: avoid;
-  }
-  .signatures td {
-    width: 45%;
-    padding: 0 14pt;
-    text-align:center;
-    vertical-align: bottom;
-  }
-  .signatures .gap { width:10%; }
-  .sign-line {
-    border-top: 0.75pt solid #000;
-    padding-top: 5pt;
-    font-size: 10.5pt;
-    color: #000;
-    font-weight: 600;
-  }
-  .sign-role {
-    font-size: 9pt;
-    color:#444;
-    margin-top: 2pt;
+  // === RESPOSTA ===
+  if (p.respostaAdmin) {
+    drawSection('Resposta da Diretoria');
+    doc.setFillColor(239, 246, 255);
+    doc.setDrawColor(46, 116, 201);
+    const respLines = doc.splitTextToSize(p.respostaAdmin, W - M*2 - 6);
+    const respH = Math.max(14, respLines.length * 5 + 8);
+    doc.rect(M, y, W - M*2, respH, 'F');
+    doc.setLineWidth(1.5);
+    doc.line(M, y, M, y + respH);
+    doc.setLineWidth(0.1);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(46, 116, 201);
+    doc.text((p.respondidoPor || 'Diretoria').toUpperCase(), M + 4, y + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...DARK);
+    doc.text(respLines, M + 4, y + 10);
+    y += respH + 5;
   }
 
-  /* === RODAPÉ === */
-  .footer {
-    margin-top: 40pt;
-    padding-top: 8pt;
-    border-top: 0.5pt solid #c5cad3;
-    font-size: 8.5pt;
-    color:#666;
-    text-align:center;
-    letter-spacing: 0.5pt;
+  // === HISTÓRICO ===
+  if (movs.length) {
+    if (y > H - 60) { doc.addPage(); y = M; }
+    drawSection('Histórico de Tramitação');
+    doc.autoTable({
+      startY: y,
+      margin: { left: M, right: M },
+      head: [['Quando', 'Por', 'Ação']],
+      body: movs.slice().reverse().map(h => [
+        fmt.datetime(h.at), h.by, h.action,
+      ]),
+      styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 2.5, textColor: DARK, lineColor: GREY, lineWidth: 0.1 },
+      headStyles: { fillColor: LIGHT, textColor: NAVY, fontStyle: 'bold', fontSize: 8 },
+    });
+    y = doc.lastAutoTable.finalY + 6;
   }
-  .footer b { color:#0A3D7C; }
-</style>
-</head>
-<body>
 
-<!-- CABEÇALHO -->
-<div class="header">
-  <p class="brand-name">SOLYS</p>
-  <p class="brand-tag">Gestão Administrativa</p>
-</div>
-<div class="gold-line"></div>
+  // === ASSINATURAS (no rodapé) ===
+  const signY = H - 38;
+  if (y < signY - 6) y = signY;
+  doc.setDrawColor(...DARK);
+  doc.setLineWidth(0.3);
+  const colW = (W - M*2 - 14) / 2;
+  doc.line(M, signY, M + colW, signY);
+  doc.line(M + colW + 14, signY, W - M, signY);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...DARK);
+  doc.text(p.solicitante || '', M + colW / 2, signY + 5, { align: 'center' });
+  doc.text(p.respondidoPor || '', M + colW + 14 + colW / 2, signY + 5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...MUTED);
+  doc.text(`Solicitante — ${p.lojaNome || ''}`, M + colW / 2, signY + 10, { align: 'center' });
+  doc.text('Diretoria — SOLYS', M + colW + 14 + colW / 2, signY + 10, { align: 'center' });
 
-<!-- TÍTULO + PROTOCOLO -->
-<div class="doc-title">
-  <h1>Pedido de Compras</h1>
-  <div class="proto">Protocolo: <b>${escapeHtml(proto)}</b></div>
-</div>
+  // === RODAPÉ ===
+  doc.setDrawColor(...GREY);
+  doc.setLineWidth(0.2);
+  doc.line(M, H - 12, W - M, H - 12);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...MUTED);
+  doc.text('SOLYS · Logística de Compras · ' + new Date().toLocaleString('pt-BR'), W / 2, H - 8, { align: 'center' });
+  doc.setFont('courier', 'normal');
+  doc.text(proto, W / 2, H - 5, { align: 'center' });
 
-<!-- DADOS -->
-<h2 class="sec">Dados do Pedido</h2>
-<table class="info">
-  <tr><td class="lbl">Unidade Solicitante:</td><td class="val"><b>${escapeHtml(p.lojaNome)}</b></td></tr>
-  <tr><td class="lbl">Endereço:</td><td class="val">${escapeHtml(enderecoCompleto)}</td></tr>
-  <tr><td class="lbl">Solicitante:</td><td class="val">${escapeHtml(p.solicitante||'—')}</td></tr>
-  <tr><td class="lbl">Mês de Referência:</td><td class="val"><b>${mes} de ${ano}</b></td></tr>
-  <tr><td class="lbl">Data de Emissão:</td><td class="val">${dataEmissao} às ${horaEmissao}</td></tr>
-  <tr><td class="lbl">Situação:</td><td class="val"><b>${escapeHtml(p.status||'—')}</b></td></tr>
-</table>
-
-<!-- PRODUTOS -->
-<h2 class="sec">Relação de Produtos</h2>
-<table class="items">
-  <thead>
-    <tr>
-      <th style="width:34pt;text-align:center">Item</th>
-      <th style="width:50pt;text-align:center">Qtd.</th>
-      <th style="width:48pt;text-align:center">Un.</th>
-      <th>Descrição do Produto</th>
-    </tr>
-  </thead>
-  <tbody>
-    ${p.itens.map((it,i) => `<tr>
-      <td class="num">${String(i+1).padStart(2,'0')}</td>
-      <td class="qtd">${it.quantidade}</td>
-      <td class="un">${escapeHtml(it.unidade||'un')}</td>
-      <td>${escapeHtml(it.descricao)}</td>
-    </tr>`).join('')}
-  </tbody>
-</table>
-<p class="total-line">Total de produtos: <b>${p.itens.length}</b> &nbsp;·&nbsp; Total de unidades: <b>${totalUn}</b></p>
-
-${p.observacao ? `
-  <h2 class="sec">Observações</h2>
-  <div class="text-box">${escapeHtml(p.observacao)}</div>
-` : ''}
-
-${p.respostaAdmin ? `
-  <h2 class="sec">Resposta da Diretoria</h2>
-  <div class="text-box"><b>${escapeHtml(p.respondidoPor||'Diretoria')}:</b> ${escapeHtml(p.respostaAdmin)}</div>
-` : ''}
-
-<!-- ASSINATURAS -->
-<table class="signatures">
-  <tr>
-    <td>
-      <div class="sign-line">${escapeHtml(p.solicitante||'')}</div>
-      <div class="sign-role">Solicitante &mdash; ${escapeHtml(p.lojaNome)}</div>
-    </td>
-    <td class="gap"></td>
-    <td>
-      <div class="sign-line">${escapeHtml(p.respondidoPor||'')}</div>
-      <div class="sign-role">Diretoria &mdash; SOLYS</div>
-    </td>
-  </tr>
-</table>
-
-<!-- RODAPÉ -->
-<div class="footer">
-  <b>SOLYS</b> &nbsp;·&nbsp; Gestão Administrativa &nbsp;·&nbsp; Documento emitido em ${new Date().toLocaleString('pt-BR')}
-</div>
-
-</body></html>`;
-
-  const blob = new Blob(['﻿' + html], { type: 'application/msword' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const cleanName = p.lojaNome.replace(/[^a-zA-Z0-9]+/g,'_');
-  a.href = url;
-  a.download = `${proto}_${cleanName}.doc`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast('Word gerado',`${proto}.doc`,'success');
+  const cleanName = (p.lojaNome || 'loja').replace(/[^a-zA-Z0-9]+/g, '_');
+  doc.save(`${proto}_${cleanName}.pdf`);
+  toast('PDF gerado', `${proto}.pdf`, 'success');
 }
 
 async function abrirDetalhePedido(id){
@@ -7128,7 +7068,7 @@ async function abrirDetalhePedido(id){
       </div>
 
       <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;flex-wrap:wrap">
-        ${state.user?.role !== 'Colaborador' ? `<button class="btn" onclick="closeModal();baixarPedidoWord('${p.id}')"><i data-lucide="file-text"></i>Baixar Word</button>` : ''}
+        ${state.user?.role !== 'Colaborador' ? `<button class="btn" onclick="closeModal();baixarPedidoWord('${p.id}')"><i data-lucide="file-text"></i>Baixar PDF</button>` : ''}
         ${state.user?.role !== 'Colaborador' && p.status==='Pendente' ? `<button class="btn gold" onclick="closeModal();editarPedidoGestao('${p.id}')"><i data-lucide="edit-3"></i>Editar</button>` : ''}
       </div>
     `,
