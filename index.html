@@ -2436,6 +2436,50 @@ body::before, body::after{display:none !important}
   padding:40px 36px !important;
   display:flex;flex-direction:column;justify-content:center;
 }
+/* refinamento do formulário */
+.login-split .login-title{
+  font-family:'Inter','Outfit',system-ui,sans-serif !important;
+  font-size:21px !important;font-weight:700 !important;
+  color:var(--navy-700) !important;letter-spacing:-.01em !important;
+  margin-bottom:4px !important;
+}
+.login-split .login-sub{font-size:13px !important;color:var(--ink-300) !important;margin-bottom:24px !important}
+.login-split .field{margin-bottom:16px !important}
+.login-split .field label{
+  text-transform:none !important;letter-spacing:0 !important;
+  font-size:12.5px !important;font-weight:600 !important;
+  color:var(--ink-200) !important;margin-bottom:6px !important;
+}
+.login-split .select-wrap select,
+.login-split .select-wrap input{
+  padding:11px 12px 11px 38px !important;
+  font-size:13.5px !important;
+  border-radius:10px !important;
+  border-color:#d4dce8 !important;
+}
+.login-split .select-wrap select:focus,
+.login-split .select-wrap input:focus{
+  border-color:var(--navy-600) !important;
+  background:#fff !important;
+  box-shadow:0 0 0 3px rgba(10,61,124,.10) !important;
+}
+.login-split .btn-primary{
+  margin-top:8px !important;
+  padding:12px 16px !important;
+  font-size:14px !important;font-weight:600 !important;
+  border-radius:10px !important;
+}
+.login-split .login-admin-toggle{
+  margin-top:22px !important;
+  padding-top:16px;
+  border-top:1px solid rgba(10,61,124,.08);
+}
+.login-split .login-admin-toggle .link-btn{
+  font-size:12px !important;color:var(--ink-400) !important;
+  text-decoration:none !important;
+}
+.login-split .login-admin-toggle .link-btn:hover{color:var(--navy-700) !important}
+
 @media (max-width:760px){
   .login-split{flex-direction:column;max-width:420px}
   .login-side{border-right:none;border-bottom:1px solid var(--border);padding:26px 24px 20px;gap:6px}
@@ -3192,7 +3236,7 @@ input[type=password], input[type=email], input[type=search]{
       <div class="select-wrap">
         <i data-lucide="store"></i>
         <select id="loginLojaSelect">
-          <option value="">— Selecione sua loja —</option>
+          <option value="">Selecione sua loja</option>
         </select>
       </div>
     </div>
@@ -3206,13 +3250,10 @@ input[type=password], input[type=email], input[type=search]{
       </div>
     </div>
 
-    <button class="btn-primary" onclick="entrarLojaUnificado()">
-      <i data-lucide="log-in" style="width:15px;height:15px;display:inline-block;vertical-align:-3px;margin-right:6px"></i>
-      Entrar
-    </button>
+    <button class="btn-primary" onclick="entrarLojaUnificado()">Entrar</button>
 
     <div class="login-admin-toggle">
-      <button class="link-btn" onclick="toggleAdminLogin()"><i data-lucide="shield" style="width:12px;height:12px;display:inline-block;vertical-align:-1px"></i> Acesso da gestão</button>
+      <button class="link-btn" onclick="toggleAdminLogin()">Acesso da gestão</button>
     </div>
 
     <div id="adminLoginBox" class="admin-login-box hidden">
@@ -4056,7 +4097,7 @@ function showLogin() {
   const sel = document.getElementById('loginLojaSelect');
   if (sel && state.lojas) {
     const ordenadas = [...state.lojas].sort((a,b)=>a.nome.localeCompare(b.nome));
-    sel.innerHTML = `<option value="">— Selecione sua loja —</option>` +
+    sel.innerHTML = `<option value="">Selecione sua loja</option>` +
       ordenadas.map(l => `<option value="${l.id}">${escapeHtml(l.nome)} — ${escapeHtml(l.localidade)}</option>`).join('');
   }
   // Limpa campos
