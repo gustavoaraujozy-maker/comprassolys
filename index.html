@@ -3495,7 +3495,16 @@ const Cloud = {
   },
   async signInDiretoria(senha){
     if (!this.ok()) return { error: { message: 'Supabase offline' } };
-    return await supa.auth.signInWithPassword({ email: 'diretoria@solys.local', password: senha });
+    // Contas de gestão — cada pessoa tem sua própria senha
+    const contas = [
+      { email: 'luisgustavo@solys.local', nome: 'Luís Gustavo' },
+      { email: 'diretoria@solys.local',  nome: '' },
+    ];
+    for (const conta of contas) {
+      const r = await supa.auth.signInWithPassword({ email: conta.email, password: senha });
+      if (!r.error && r.data?.session) return { ...r, conta };
+    }
+    return { error: { message: 'Senha incorreta' } };
   },
   async signOut(){
     if (!this.ok()) return;
@@ -4256,12 +4265,14 @@ async function entrarComoLoja(lojaId) {
 
 async function entrarComoGestao(role) {
   const pass = document.getElementById('adminPass').value;
-  // Autentica via Supabase Auth (usuario diretoria@solys.local)
-  const { data, error } = await Cloud.signInDiretoria(pass);
+  // Autentica via Supabase Auth (contas de gestão)
+  const { data, error, conta } = await Cloud.signInDiretoria(pass);
   if (error || !data?.session) {
     toast('Acesso negado','Senha incorreta','error'); return;
   }
-  const u = state.users.find(x => x.role === role) || state.users.find(x => x.role === 'Administrador');
+  const u = (conta?.nome && state.users.find(x => x.name === conta.nome))
+    || state.users.find(x => x.role === role)
+    || state.users.find(x => x.role === 'Administrador');
   if (!u) { toast('Erro',`Nenhum usuário ${role} cadastrado`,'error'); return; }
   state.user = u;
   await Storage.set('solys:session', { tipo:'user', userId: u.id, at: new Date().toISOString() });
