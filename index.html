@@ -4267,16 +4267,24 @@ async function entrarComoGestao(role) {
   const pass = document.getElementById('adminPass').value;
   // Autentica via Supabase Auth (contas de gestão)
   const { data, error, conta } = await Cloud.signInDiretoria(pass);
-  if (error || !data?.session) {
+  let u = null;
+  if (!error && data?.session) {
+    u = (conta?.nome && state.users.find(x => x.name === conta.nome))
+      || state.users.find(x => x.role === role)
+      || state.users.find(x => x.role === 'Administrador');
+  } else {
+    // Fallback local: aceita a senha cadastrada localmente (Supabase offline ou conta não criada)
+    // Prioriza o papel solicitado; depois qualquer conta de gestão com a senha
+    u = state.users.find(x => !x.isLoja && x.pass === pass && x.role === role)
+      || state.users.find(x => !x.isLoja && x.pass === pass
+            && (x.role === 'Diretoria' || x.role === 'Administrador'));
+  }
+  if (!u) {
     toast('Acesso negado','Senha incorreta','error'); return;
   }
-  const u = (conta?.nome && state.users.find(x => x.name === conta.nome))
-    || state.users.find(x => x.role === role)
-    || state.users.find(x => x.role === 'Administrador');
-  if (!u) { toast('Erro',`Nenhum usuário ${role} cadastrado`,'error'); return; }
   state.user = u;
   await Storage.set('solys:session', { tipo:'user', userId: u.id, at: new Date().toISOString() });
-  await pushLog('login', `${u.name} (${role}) iniciou sessão`, { role });
+  await pushLog('login', `${u.name} (${u.role}) iniciou sessão`, { role: u.role });
   enterApp();
 }
 
