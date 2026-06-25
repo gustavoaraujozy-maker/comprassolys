@@ -1,16 +1,17 @@
 # SOLYS · Logística de Compras
 
-Sistema interno de pedidos de compras integrado com Supabase em tempo real.
+Sistema interno de pedidos de compras integrado com Firebase em tempo real.
 
 ## Arquitetura
 
 - **Frontend:** HTML único (`index.html`) com JS vanilla e CSS embutido
-- **Backend:** Supabase (Postgres + Realtime)
-- **Banco:** projeto `solys-compras` (sa-east-1)
+- **Backend:** Firebase Firestore (banco + realtime via `onSnapshot`)
+- **Projeto Firebase:** `comprassolys`
+- **Coleções:** `lojas` (com itens embutidos), `pedidos`, `config/gestao`
 
 ## Como rodar localmente
 
-Basta abrir `index.html` em qualquer navegador. Tudo funciona offline para visualização; para sincronizar pedidos entre lojas e diretoria é preciso conexão com a internet (Supabase).
+Basta abrir `index.html` em qualquer navegador. Tudo funciona offline para visualização; para sincronizar pedidos entre lojas e diretoria é preciso conexão com a internet (Firebase).
 
 ## Deploy
 

@@ -12,7 +12,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.7.0/jspdf.plugin.autotable.min.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 
 <style>
 /* ============================================================
@@ -3420,199 +3421,239 @@ const Storage = {
 };
 
 /* ----------------------------------------------------------------
-   SUPABASE — banco central (realtime entre loja e diretoria)
+   FIREBASE / FIRESTORE — banco central (realtime entre loja e diretoria)
    ---------------------------------------------------------------- */
-const SUPA_URL = 'https://rmczoqutcuvrlvlmfxze.supabase.co';
-const SUPA_KEY = 'sb_publishable_mK9kyeWeOiYAc7lMBFiu4A_e3pwEaLT';
-let supa = null;
-function initSupa() {
-  if (!window.supabase) return null;
-  if (!supa) supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, { realtime: { params: { eventsPerSecond: 10 } } });
-  return supa;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAfvxijhjwsNoYcJz6Oj35exa9Pzu5qZtk",
+  authDomain: "comprassolys.firebaseapp.com",
+  projectId: "comprassolys",
+  storageBucket: "comprassolys.firebasestorage.app",
+  messagingSenderId: "267131800601",
+  appId: "1:267131800601:web:175909f9edf7c03ec22e88"
+};
+const SENHA_PADRAO_LOJA = 'Sgroup@2026#';   // senha inicial de cada loja (1º acesso)
+const SENHA_PADRAO_GESTAO = 'Solys@2027#k';  // senha inicial da Diretoria
+let db = null;
+function initFirebase() {
+  if (!window.firebase) return null;
+  if (!db) {
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.firestore();
+    } catch (e) { console.error('Firebase init error', e); return null; }
+  }
+  return db;
 }
 
 const Cloud = {
-  ok() { return !!initSupa(); },
+  ok() { return !!initFirebase(); },
+
+  // Remove undefined / funções — Firestore não aceita undefined
+  _clean(v) { return JSON.parse(JSON.stringify(v ?? null)); },
 
   _mapLoja(l) {
     return {
       id: l.id, codigo: l.codigo, nome: l.nome, localidade: l.localidade,
       endereco: l.endereco || '',
-      acessoId: l.acesso_id || '', senha: l.senha || '',
-      solicitanteNome: l.solicitante_nome || '', cadastrado: !!l.cadastrado,
-      criadoEm: l.criado_em,
-      itens: (l.loja_itens || []).map(it => ({
+      acessoId: l.acessoId || '', senha: l.senha || '',
+      solicitanteNome: l.solicitanteNome || '', cadastrado: !!l.cadastrado,
+      criadoEm: l.criadoEm,
+      itens: (l.itens || []).map(it => ({
         id: it.id, descricao: it.descricao,
         jan: it.jan|0, fev: it.fev|0, mar: it.mar|0, abr: it.abr|0,
         mai: it.mai|0, jun: it.jun|0, jul: it.jul|0, ago: it.ago|0,
         set: it.set|0, out: it.out|0, nov: it.nov|0, dez: it.dez|0,
-        obs: it.obs||'', criadoEm: it.criado_em, historico: [],
+        obs: it.obs||'', criadoEm: it.criadoEm, historico: it.historico||[],
       }))
     };
   },
-  async atualizarSenhaLoja(lojaId, novaSenha){
-    if (!this.ok()) return false;
-    const { error } = await supa.from('lojas').update({ senha: novaSenha }).eq('id', lojaId);
-    if (error) { toast('Erro ao salvar senha', error.message, 'error'); return false; }
-    return true;
-  },
-  async atualizarAcessoLoja(lojaId, novoId){
-    if (!this.ok()) return false;
-    const { error } = await supa.from('lojas').update({ acesso_id: novoId }).eq('id', lojaId);
-    if (error) { toast('Erro ao salvar ID', error.message, 'error'); return false; }
-    return true;
-  },
-  async cadastrarLoja(lojaId, solicitante, novaSenha, endereco){
-    if (!this.ok()) return false;
-    // Atualiza senha no Supabase Auth (usuário já está logado com a senha padrão)
-    const { error: authErr } = await supa.auth.updateUser({ password: novaSenha });
-    if (authErr) { toast('Erro ao atualizar senha', authErr.message, 'error'); return false; }
-    const patch = { solicitante_nome: solicitante, senha: novaSenha, cadastrado: true };
-    if (endereco !== undefined) patch.endereco = endereco;
-    const { error } = await supa.from('lojas').update(patch).eq('id', lojaId);
-    if (error) { toast('Erro ao cadastrar', error.message, 'error'); return false; }
-    return true;
-  },
-  async atualizarEnderecoLoja(lojaId, endereco){
-    if (!this.ok()) return false;
-    const { error } = await supa.from('lojas').update({ endereco }).eq('id', lojaId);
-    if (error) { toast('Erro ao salvar endereço', error.message, 'error'); return false; }
-    return true;
-  },
-  async resetarCadastroLoja(lojaId){
-    if (!this.ok()) return false;
-    // Chama função RPC server-side que reseta senha no Auth + zera cadastro
-    const { error } = await supa.rpc('reset_loja_acesso', { p_loja_id: lojaId });
-    if (error) { toast('Erro ao resetar', error.message, 'error'); return false; }
-    return true;
-  },
-
-  /* === SUPABASE AUTH === */
-  async signInLoja(codigoLoja, senha){
-    if (!this.ok()) return { error: { message: 'Supabase offline' } };
-    const email = `${codigoLoja}@solys.local`;
-    return await supa.auth.signInWithPassword({ email, password: senha });
-  },
-  async signInDiretoria(senha){
-    if (!this.ok()) return { error: { message: 'Supabase offline' } };
-    // Contas de gestão — cada pessoa tem sua própria senha
-    const contas = [
-      { email: 'luisgustavo@solys.local', nome: 'Luís Gustavo' },
-      { email: 'diretoria@solys.local',  nome: '' },
-    ];
-    for (const conta of contas) {
-      const r = await supa.auth.signInWithPassword({ email: conta.email, password: senha });
-      if (!r.error && r.data?.session) return { ...r, conta };
-    }
-    return { error: { message: 'Senha incorreta' } };
-  },
-  async signOut(){
-    if (!this.ok()) return;
-    await supa.auth.signOut();
-  },
-  async getSession(){
-    if (!this.ok()) return null;
-    const { data } = await supa.auth.getSession();
-    return data.session;
-  },
   _mapPedido(p) {
     return {
-      id: p.id, lojaId: p.loja_id, lojaNome: p.loja_nome, lojaLocal: p.loja_local,
+      id: p.id, lojaId: p.lojaId, lojaNome: p.lojaNome, lojaLocal: p.lojaLocal,
       data: p.data, solicitante: p.solicitante, observacao: p.observacao,
       anexos: p.anexos || [], itens: p.itens || [], historico: p.historico || [],
-      status: p.status, respondidoPor: p.respondido_por || '', respostaAdmin: p.resposta_admin || '',
-      criadoEm: p.criado_em,
+      status: p.status, respondidoPor: p.respondidoPor || '', respostaAdmin: p.respostaAdmin || '',
+      criadoEm: p.criadoEm,
     };
   },
 
+  // Semeia as lojas + config de gestão na primeira vez que o banco está vazio
+  async _seedLojas() {
+    const batch = db.batch();
+    const seeded = LOJAS_SEED.map(loja => {
+      const id = loja.codigo;
+      const doc = {
+        codigo: loja.codigo, nome: loja.nome, localidade: loja.localidade,
+        endereco: '',
+        acessoId: (loja.codigo||'XXX').slice(0,3).toUpperCase() + Math.floor(1000+Math.random()*9000),
+        senha: SENHA_PADRAO_LOJA, solicitanteNome: '', cadastrado: false,
+        criadoEm: new Date().toISOString(),
+        itens: loja.itens.map(it => ({
+          id: uid(), descricao: it.descricao,
+          jan: it.jan|0, fev: it.fev|0, mar: it.mar|0, abr: it.abr|0,
+          mai: it.mai|0, jun: it.jun|0, jul: it.jul|0, ago: it.ago|0,
+          set: it.set|0, out: it.out|0, nov: it.nov|0, dez: it.dez|0,
+          obs: it.obs||'', criadoEm: new Date().toISOString(), historico: [],
+        })),
+      };
+      batch.set(db.collection('lojas').doc(id), doc);
+      return this._mapLoja({ id, ...doc });
+    });
+    batch.set(db.collection('config').doc('gestao'),
+      { luisgustavo: SENHA_PADRAO_GESTAO, diretoria: SENHA_PADRAO_GESTAO }, { merge: true });
+    await batch.commit();
+    return seeded.sort((a,b)=>a.nome.localeCompare(b.nome));
+  },
+
+  async getLoja(lojaId){
+    if (!this.ok()) return null;
+    try {
+      const s = await db.collection('lojas').doc(lojaId).get();
+      return s.exists ? this._mapLoja({ id: s.id, ...s.data() }) : null;
+    } catch (e) { console.warn('Cloud.getLoja', e); return null; }
+  },
+
+  async atualizarSenhaLoja(lojaId, novaSenha){
+    if (!this.ok()) return false;
+    try { await db.collection('lojas').doc(lojaId).update({ senha: novaSenha }); return true; }
+    catch (e) { toast('Erro ao salvar senha', e.message, 'error'); return false; }
+  },
+  async atualizarAcessoLoja(lojaId, novoId){
+    if (!this.ok()) return false;
+    try { await db.collection('lojas').doc(lojaId).update({ acessoId: novoId }); return true; }
+    catch (e) { toast('Erro ao salvar ID', e.message, 'error'); return false; }
+  },
+  async cadastrarLoja(lojaId, solicitante, novaSenha, endereco){
+    if (!this.ok()) return false;
+    const patch = { solicitanteNome: solicitante, senha: novaSenha, cadastrado: true };
+    if (endereco !== undefined) patch.endereco = endereco;
+    try { await db.collection('lojas').doc(lojaId).update(patch); return true; }
+    catch (e) { toast('Erro ao cadastrar', e.message, 'error'); return false; }
+  },
+  async atualizarEnderecoLoja(lojaId, endereco){
+    if (!this.ok()) return false;
+    try { await db.collection('lojas').doc(lojaId).update({ endereco }); return true; }
+    catch (e) { toast('Erro ao salvar endereço', e.message, 'error'); return false; }
+  },
+  async resetarCadastroLoja(lojaId){
+    if (!this.ok()) return false;
+    try {
+      await db.collection('lojas').doc(lojaId).update({
+        senha: SENHA_PADRAO_LOJA, cadastrado: false, solicitanteNome: ''
+      });
+      return true;
+    } catch (e) { toast('Erro ao resetar', e.message, 'error'); return false; }
+  },
+
+  /* === LOGIN (Firestore) === */
+  async signInLoja(codigoLoja, senha){
+    if (!this.ok()) return { error: { message: 'Firebase offline' } };
+    try {
+      const snap = await db.collection('lojas').doc(codigoLoja).get();
+      if (!snap.exists) return { error: { message: 'Loja não encontrada' } };
+      if ((snap.data().senha || '') !== senha) return { error: { message: 'Senha incorreta' } };
+      return { data: { session: { codigo: codigoLoja } }, error: null };
+    } catch (e) { return { error: { message: e.message } }; }
+  },
+  async signInDiretoria(senha){
+    if (!this.ok()) return { error: { message: 'Firebase offline' } };
+    try {
+      const snap = await db.collection('config').doc('gestao').get();
+      const g = snap.exists ? snap.data()
+        : { luisgustavo: SENHA_PADRAO_GESTAO, diretoria: SENHA_PADRAO_GESTAO };
+      if (senha && senha === g.luisgustavo) return { data: { session: {} }, error: null, conta: { nome: 'Luís Gustavo' } };
+      if (senha && senha === g.diretoria)  return { data: { session: {} }, error: null, conta: { nome: '' } };
+      return { error: { message: 'Senha incorreta' } };
+    } catch (e) { return { error: { message: e.message } }; }
+  },
+  async signOut(){ return; },
+  async getSession(){ return null; },
+
   async loadLojas() {
     if (!this.ok()) return null;
-    const { data, error } = await supa.from('lojas').select('*, loja_itens(*)').order('nome');
-    if (error) { console.warn('Cloud.loadLojas', error); return null; }
-    return data.map(this._mapLoja);
+    try {
+      const snap = await db.collection('lojas').get();
+      if (snap.empty) return await this._seedLojas();
+      return snap.docs.map(d => this._mapLoja({ id: d.id, ...d.data() }))
+        .sort((a,b)=>a.nome.localeCompare(b.nome));
+    } catch (e) { console.warn('Cloud.loadLojas', e); return null; }
   },
   async loadPedidos() {
     if (!this.ok()) return null;
-    const { data, error } = await supa.from('pedidos').select('*').neq('status','Arquivado').order('criado_em', { ascending: false });
-    if (error) { console.warn('Cloud.loadPedidos', error); return null; }
-    return data.map(this._mapPedido);
+    try {
+      const snap = await db.collection('pedidos').get();
+      return snap.docs.map(d => this._mapPedido({ id: d.id, ...d.data() }))
+        .filter(p => p.status !== 'Arquivado')
+        .sort((a,b)=> (b.criadoEm||'').localeCompare(a.criadoEm||''));
+    } catch (e) { console.warn('Cloud.loadPedidos', e); return null; }
   },
 
   async insertPedido(p) {
     if (!this.ok()) return null;
-    const { data, error } = await supa.from('pedidos').insert({
-      loja_id: p.lojaId, loja_nome: p.lojaNome, loja_local: p.lojaLocal,
-      data: p.data, solicitante: p.solicitante, observacao: p.observacao,
-      anexos: p.anexos || [], itens: p.itens || [], historico: p.historico || [],
-      status: p.status || 'Pendente',
-    }).select().single();
-    if (error) { toast('Erro ao enviar pedido', error.message, 'error'); return null; }
-    return this._mapPedido(data);
+    try {
+      const id = uid();
+      const doc = {
+        lojaId: p.lojaId, lojaNome: p.lojaNome, lojaLocal: p.lojaLocal,
+        data: p.data, solicitante: p.solicitante, observacao: p.observacao || '',
+        anexos: this._clean(p.anexos || []), itens: this._clean(p.itens || []),
+        historico: this._clean(p.historico || []),
+        status: p.status || 'Pendente', respondidoPor: '', respostaAdmin: '',
+        criadoEm: new Date().toISOString(),
+      };
+      await db.collection('pedidos').doc(id).set(doc);
+      return this._mapPedido({ id, ...doc });
+    } catch (e) { toast('Erro ao enviar pedido', e.message, 'error'); return null; }
   },
   async updatePedido(id, patch) {
     if (!this.ok()) return false;
+    const allow = ['status','respondidoPor','respostaAdmin','historico','itens','observacao','solicitante','data','anexos'];
     const row = {};
-    const map = { status:'status', respondidoPor:'respondido_por', respostaAdmin:'resposta_admin',
-                  historico:'historico', itens:'itens', observacao:'observacao',
-                  solicitante:'solicitante', data:'data', anexos:'anexos' };
-    Object.keys(patch).forEach(k => { if (map[k]) row[map[k]] = patch[k]; });
-    const { error } = await supa.from('pedidos').update(row).eq('id', id);
-    if (error) { toast('Erro ao atualizar', error.message, 'error'); return false; }
-    return true;
+    Object.keys(patch).forEach(k => { if (allow.includes(k)) row[k] = this._clean(patch[k]); });
+    try { await db.collection('pedidos').doc(id).update(row); return true; }
+    catch (e) { toast('Erro ao atualizar', e.message, 'error'); return false; }
   },
   async deletePedido(id) {
     if (!this.ok()) return false;
-    const { error } = await supa.from('pedidos').delete().eq('id', id);
-    if (error) { toast('Erro ao excluir', error.message, 'error'); return false; }
-    return true;
+    try { await db.collection('pedidos').doc(id).delete(); return true; }
+    catch (e) { toast('Erro ao excluir', e.message, 'error'); return false; }
   },
 
-  async upsertLojaItem(lojaId, item) {
+  // Itens ficam embutidos no doc da loja — persiste o array inteiro (já atualizado em memória)
+  async _persistLojaItens(lojaId) {
     if (!this.ok()) return false;
-    const row = {
-      loja_id: lojaId, descricao: (item.descricao||'').toUpperCase().trim(),
-      jan: item.jan|0, fev: item.fev|0, mar: item.mar|0, abr: item.abr|0,
-      mai: item.mai|0, jun: item.jun|0, jul: item.jul|0, ago: item.ago|0,
-      set: item.set|0, out: item.out|0, nov: item.nov|0, dez: item.dez|0,
-      obs: item.obs || '',
-    };
-    const { error } = await supa.from('loja_itens').upsert(row, { onConflict:'loja_id,descricao' });
-    if (error) { console.warn('Cloud.upsertLojaItem', error); return false; }
-    return true;
+    const loja = state.lojas.find(l => l.id === lojaId);
+    if (!loja) return false;
+    try { await db.collection('lojas').doc(lojaId).update({ itens: this._clean(loja.itens || []) }); return true; }
+    catch (e) { console.warn('Cloud._persistLojaItens', e); return false; }
   },
-  async incLojaItemMes(lojaId, descricao, mesKey, delta) {
-    // SOMA na grade mensal — busca, soma, salva
-    if (!this.ok()) return false;
-    const desc = (descricao||'').toUpperCase().trim();
-    const { data: existing } = await supa.from('loja_itens')
-      .select('*').eq('loja_id', lojaId).eq('descricao', desc).maybeSingle();
-    if (existing) {
-      const novo = (existing[mesKey]|0) + (delta|0);
-      const { error } = await supa.from('loja_itens').update({ [mesKey]: novo }).eq('id', existing.id);
-      if (error) { console.warn('inc update', error); return false; }
-    } else {
-      const row = { loja_id: lojaId, descricao: desc, [mesKey]: delta|0 };
-      const { error } = await supa.from('loja_itens').insert(row);
-      if (error) { console.warn('inc insert', error); return false; }
-    }
-    return true;
-  },
+  async upsertLojaItem(lojaId) { return this._persistLojaItens(lojaId); },
+  async incLojaItemMes(lojaId) { return this._persistLojaItens(lojaId); },
+  async deleteLojaItem(lojaId) { return this._persistLojaItens(lojaId); },
 
-  _chans: [],
+  _unsubs: [],
   subscribe(onPedidoChange, onLojaItemChange) {
     if (!this.ok()) return;
     this.unsubscribe();
-    const c1 = supa.channel('rt-pedidos')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, onPedidoChange)
-      .subscribe();
-    const c2 = supa.channel('rt-loja-itens')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'loja_itens' }, onLojaItemChange)
-      .subscribe();
-    this._chans = [c1, c2];
+    let firstP = true;
+    const u1 = db.collection('pedidos').onSnapshot(snap => {
+      if (firstP) { firstP = false; return; }   // ignora carga inicial (evita avalanche de notificações)
+      snap.docChanges().forEach(ch => {
+        const data = { id: ch.doc.id, ...ch.doc.data() };
+        if (ch.type === 'added')         onPedidoChange({ eventType: 'INSERT', new: data });
+        else if (ch.type === 'modified') onPedidoChange({ eventType: 'UPDATE', new: data });
+        else if (ch.type === 'removed')  onPedidoChange({ eventType: 'DELETE', old: { id: ch.doc.id } });
+      });
+    }, err => console.warn('rt pedidos', err));
+    let firstL = true;
+    const u2 = db.collection('lojas').onSnapshot(snap => {
+      if (firstL) { firstL = false; return; }
+      onLojaItemChange({});
+    }, err => console.warn('rt lojas', err));
+    this._unsubs = [u1, u2];
   },
   unsubscribe() {
-    this._chans.forEach(c => { try { supa.removeChannel(c); } catch(e){} });
-    this._chans = [];
+    (this._unsubs || []).forEach(u => { try { u(); } catch(e){} });
+    this._unsubs = [];
   },
 };
 
@@ -3955,7 +3996,7 @@ async function onClickNotif(id){
 async function markAllRead(){ await NotifCenter.markAllRead(); }
 
 /* ----------------------------------------------------------------
-   v2 · REAL-TIME (Supabase subscriptions — substitui o polling)
+   v2 · REAL-TIME (Firestore onSnapshot — substitui o polling)
    ---------------------------------------------------------------- */
 function startLivePolling(){
   if (Cloud.ok()) Cloud.subscribe(onCloudPedidoEvent, onCloudLojaItemEvent);
@@ -4061,7 +4102,7 @@ async function initAuth() {
   state.users = users;
 
   // Garante que as lojas estejam carregadas (necessárias na tela inicial)
-  // Tenta Supabase primeiro; cache local como fallback
+  // Tenta Firestore primeiro; cache local como fallback
   let lojas = null;
   if (Cloud.ok()) lojas = await Cloud.loadLojas();
   if (!Array.isArray(lojas) || !lojas.length) lojas = await Storage.get('solys:lojas', null);
@@ -4069,10 +4110,9 @@ async function initAuth() {
   state.lojas = lojas;
   await Storage.set('solys:lojas', state.lojas);
 
-  // Sessão ativa? — exige sessão Supabase Auth válida
+  // Sessão ativa? — mantida localmente (Firestore não exige sessão de Auth)
   const session = await Storage.get('solys:session', null);
-  const authSession = await Cloud.getSession();
-  if (session && authSession) {
+  if (session) {
     if (session.tipo === 'loja') {
       const loja = state.lojas.find(l => l.id === session.lojaId);
       if (loja) { state.user = pseudoUserLoja(loja); enterApp(); return; }
@@ -4080,9 +4120,6 @@ async function initAuth() {
       const u = users.find(x => x.id === session.userId);
       if (u) { state.user = u; enterApp(); return; }
     }
-  } else if (session && !authSession) {
-    // Sessão local vazia: limpa pra forçar novo login
-    await Storage.del('solys:session');
   }
   showLogin();
 }
@@ -4148,7 +4185,7 @@ async function loginLoja(lojaId){
   const senha = (document.getElementById(`lpw-${lojaId}`)?.value || '');
   if (!senha) { toast('Atenção','Informe a senha','warning'); return; }
 
-  // Tenta autenticar via Supabase Auth (signInWithPassword)
+  // Autentica conferindo a senha guardada no Firestore
   const { data, error } = await Cloud.signInLoja(loja.codigo, senha);
   if (error || !data?.session) {
     toast('Acesso negado', 'Senha incorreta', 'error');
@@ -4156,9 +4193,9 @@ async function loginLoja(lojaId){
   }
 
   // Atualiza loja com dados frescos do server
-  const { data: fresh } = await supa.from('lojas').select('*').eq('id', lojaId).single();
+  const fresh = await Cloud.getLoja(lojaId);
   if (fresh) {
-    Object.assign(loja, Cloud._mapLoja(fresh));
+    Object.assign(loja, fresh);
   }
 
   // Se loja ainda não cadastrou: abre modal de cadastro (continua logada na Auth)
@@ -4219,13 +4256,13 @@ async function concluirCadastroLoja(lojaId){
 
   // Re-checa no servidor antes de salvar — evita corrida de cadastro duplo
   if (Cloud.ok()) {
-    const { data: fresh } = await supa.from('lojas').select('cadastrado,solicitante_nome').eq('id', lojaId).maybeSingle();
+    const fresh = await Cloud.getLoja(lojaId);
     if (fresh && fresh.cadastrado) {
       // Atualiza estado local com a versão mais nova
       loja.cadastrado = true;
-      loja.solicitanteNome = fresh.solicitante_nome || loja.solicitanteNome;
+      loja.solicitanteNome = fresh.solicitanteNome || loja.solicitanteNome;
       closeModal();
-      toast('Loja já cadastrada', `${fresh.solicitante_nome || 'Outro usuário'} já registrou o acesso`, 'warning');
+      toast('Loja já cadastrada', `${fresh.solicitanteNome || 'Outro usuário'} já registrou o acesso`, 'warning');
       showLogin();
       return;
     }
@@ -4265,7 +4302,7 @@ async function entrarComoLoja(lojaId) {
 
 async function entrarComoGestao(role) {
   const pass = document.getElementById('adminPass').value;
-  // Autentica via Supabase Auth (contas de gestão)
+  // Autentica via Firestore (contas de gestão)
   const { data, error, conta } = await Cloud.signInDiretoria(pass);
   if (error || !data?.session) {
     toast('Acesso negado','Senha incorreta','error'); return;
@@ -4370,7 +4407,7 @@ async function loadAllData() {
   state.notifications = await Storage.get('solys:notifications', []);
   state.colabRequests = await Storage.get('solys:colab_requests', []);
 
-  // SUPABASE — fonte da verdade para lojas e pedidos
+  // FIRESTORE — fonte da verdade para lojas e pedidos
   if (Cloud.ok()) {
     const [lojas, pedidos] = await Promise.all([Cloud.loadLojas(), Cloud.loadPedidos()]);
     if (Array.isArray(lojas) && lojas.length) {
@@ -4393,7 +4430,7 @@ async function loadAllData() {
   }
 }
 
-/* Handler de eventos realtime do Supabase — pedidos chegam e a tela atualiza */
+/* Handler de eventos realtime do Firestore — pedidos chegam e a tela atualiza */
 async function onCloudPedidoEvent(payload) {
   const ev = payload.eventType;
   if (ev === 'INSERT' && payload.new) {
@@ -5933,7 +5970,7 @@ async function updateLojaCell(lojaId, itemId, field, value) {
   if (!it.historico) it.historico = [];
   it.historico.push({ at:new Date().toISOString(), by:state.user?.name||'?', action:`alterou ${field}`, de:oldVal, para:it[field] });
   await Storage.set('solys:lojas', state.lojas);
-  // Persiste no Supabase
+  // Persiste no Firestore
   if (Cloud.ok()) await Cloud.upsertLojaItem(lojaId, it);
   await pushLog('loja-edit', `${state.user?.name||'?'} alterou ${field} de "${it.descricao}" em ${loja.nome}`, { de:oldVal, para:it[field] });
   // re-render row + footer totals
@@ -6002,7 +6039,7 @@ async function delLojaItem(lojaId, itemId) {
   if (!confirm(`Excluir "${it.descricao}"? Esta ação não pode ser desfeita.`)) return;
   loja.itens = loja.itens.filter(x => x.id !== itemId);
   await Storage.set('solys:lojas', state.lojas);
-  if (Cloud.ok()) await supa.from('loja_itens').delete().eq('id', itemId);
+  if (Cloud.ok()) await Cloud.deleteLojaItem(lojaId);
   await pushLog('loja-del', `${state.user?.name||'?'} removeu "${it.descricao}" de ${loja.nome}`);
   toast('Item removido', it.descricao, 'info');
   renderLojaDetalhe();
@@ -6735,7 +6772,7 @@ async function somarPedidoNaGradeLoja(loja, itens, data){
       loja.itens.push(existente);
     }
     existente[mesKey] = (existente[mesKey]|0) + (it.quantidade|0);
-    // Persiste no Supabase
+    // Persiste no Firestore
     if (Cloud.ok()) await Cloud.incLojaItemMes(loja.id, desc, mesKey, it.quantidade|0);
   }
   await Storage.set('solys:lojas', state.lojas);
