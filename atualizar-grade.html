@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SOLYS · Preencher Junho na Grade</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0e1116; color:#e6e8ee; margin:0; padding:24px; }
+  .wrap { max-width:760px; margin:0 auto; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  p.sub { color:#9aa3b2; margin:0 0 20px; font-size:14px; }
+  button { background:#c89b3c; color:#1a1407; border:0; padding:14px 22px; font-size:15px; font-weight:700; border-radius:10px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .card { background:#161b22; border:1px solid #232a35; border-radius:12px; padding:18px; margin-bottom:16px; }
+  .log { background:#0a0d12; border:1px solid #232a35; border-radius:10px; padding:14px; font-family:ui-monospace,monospace; font-size:13px; line-height:1.6; white-space:pre-wrap; max-height:380px; overflow:auto; margin-top:16px; }
+  .ok { color:#5ad19a; } .err { color:#ff6b6b; } .muted { color:#9aa3b2; }
+  .big { font-size:24px; font-weight:800; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📊 Preencher JUNHO na grade · SOLYS</h1>
+  <p class="sub">Coloca as quantidades de junho na coluna JUN da tabela de cada loja (cria item que não existir), cria a loja Sindtaxi e corrige a data do pedido da Maracanaú para junho. Pode rodar mais de uma vez sem duplicar (ele <b>define</b> o valor de junho, não soma).</p>
+
+  <div class="card">
+    <div class="big">8 lojas · coluna JUNHO/2026</div>
+    <p class="muted">Maracanaú, Bezerra, Caucaia, Pacajus, Sindtaxi (nova), Montese, Heraclito, Messejana</p>
+    <button id="btn" onclick="rodar()">▶ Preencher junho na grade</button>
+  </div>
+
+  <div class="log" id="log">Pronto. Clique no botão acima para começar.</div>
+</div>
+
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAfvxijhjwsNoYcJz6Oj35exa9Pzu5qZtk",
+  authDomain: "comprassolys.firebaseapp.com",
+  projectId: "comprassolys",
+  storageBucket: "comprassolys.firebasestorage.app",
+  messagingSenderId: "267131800601",
+  appId: "1:267131800601:web:175909f9edf7c03ec22e88"
+};
+const SENHA_PADRAO_LOJA = 'Sgroup@2026#';
+const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function uid(){ return 'id-' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+function novoItemZerado(desc){
+  const it = { id: uid(), descricao: desc, obs:'', criadoEm:new Date().toISOString(), historico:[] };
+  MESES.forEach(m => it[m] = 0);
+  return it;
+}
+
+// [qtd, descrição] — todos referentes a JUNHO/2026
+const LOJAS = [
+  { codigo:'maracana', nome:'Loja Maracanaú', local:'Maracanaú', pedidoCode:'SOL-2026-05-563ADD',
+    itens:[
+      [6,'PEDRA SANITARIA'],[1,'VEJA'],[4,'COPO 150 ML'],[1,'DESINFETANTE 5L'],[4,'ESPONJA'],[2,'INCETECIDA'],
+      [1,'AGUA SANITARIA 5L'],[4,'BOM AR'],[2,'SACO DE LIXO GRANDE'],[3,'SACO DE LIXO PEQUENO'],[1,'LUSTRA MOVEIS'],
+      [1,'BOMBRIL'],[2,'PANO DE CHÃO'],[4,'PAPEL HIGIÊNICO'],[1,'SABÃO EM BARRA (TABLETE)'],[2,'COPO DE CAFÉ'],
+      [1,'GARRAFA DE CAFÉ 1L'],[4,'BISCOITO DOCE'],[4,'BISCOITO SALGADO'],[7,'CAFÉ'],[4,'AÇUCAR'],
+      [4,'TINTA P/ IMPRESSORA HP SMART TANK 581'],[8,'PILHA PALITO P/ CONTROLE'],
+    ]},
+  { codigo:'bezerra', nome:'Loja Bezerra', local:'ADMINISTRATIVO',
+    itens:[
+      [2,'SABAO LIQUIDO 5L'],[2,'SABONETE LIQUIDO 5L'],[2,'DESINFETANTE 5L'],[1,'ALCOOL GEL 5L'],[6,'VEJA'],
+      [6,'LUSTRA MOVEL'],[8,'ESPONJA LAVA LOUÇA'],[2,'SACO DE LIXO 100L'],[4,'SACO DE LIXO 40L'],
+      [4,'PAPEL HIGIÊNICO FARDO'],[9,'BOM AR'],[35,'CAFE'],[20,'AÇÚCAR'],
+    ]},
+  { codigo:'caucaia', nome:'Loja Caucaia', local:'Caucaia',
+    itens:[
+      [1,'ISQUEIRO'],[1,'AGULHA DESENTUPIDORA DE FOGÃO'],[3,'PAPEL TOALHA'],[4,'ESPONJA'],[2,'DESINFETANTE 5L'],
+      [1,'SABAO LIQUIDO 5L'],[1,'DETERGENTE 5L'],[2,'AGUA SANITARIA 5L'],[1,'SACO DE LIXO 40 LITROS'],[4,'BOM AR'],
+      [1,'LUVA G'],[6,'PEDRA SANITARIA'],[4,'COPO 150 ML'],[1,'TINTA IMPRESSORA EPSON L1250 (TODAS AS CORES)'],
+      [2,'RESMA DE FOLHA BRANCA'],[2,'PINCEL PARA LOUSA BRANCA'],[1,'CABO USB GRANDE P/ IMPRESSORA (2.0 AX)'],
+      [15,'BOLACHA DOCE'],[15,'CAFÉ'],[15,'AÇUCAR'],[1,'LOUSA BRANCA'],[4,'PERFEX'],[3,'FLANELA'],[5,'CANETA'],
+      [2,'MARCA TEXTO'],[2,'POST IT'],[2,'COPO DE CAFÉ'],[3,'INSETICIDA'],
+    ]},
+  { codigo:'pacajus', nome:'Loja Pacajus', local:'Pacajus',
+    itens:[
+      [1,'AGUA SANITARIA 5L'],[3,'BOM AR'],[2,'DESINFETANTE 5L'],[1,'SABAO LIQUIDO 5L'],[4,'PEDRA SANITARIA'],
+      [8,'BOLACHA DOCE/SALGADA'],[5,'AÇÚCAR'],[8,'CAFÉ'],
+    ]},
+  { codigo:'sindtaxi', nome:'Loja Sindtaxi', local:'Sindtaxi', criarLoja:true,
+    itens:[
+      [1,'SACO DE LIXO 40L C/100 UN'],[1,'INSETICIDA MULTI'],[1,'PÁ'],[5,'BISCOITO SALGADO'],[1,'BALDE'],
+    ]},
+  { codigo:'montese', nome:'Loja Montese', local:'Montese',
+    itens:[
+      [10,'PEDRA SANITARIA'],[2,'DESINFETANTE 5L'],[2,'COPO CAFE'],[10,'COPO 150 ML'],[2,'PERFEX COM 5 UNIDADE'],
+      [4,'VEJA'],[5,'BOM AR'],[3,'PANO DE CHAO'],[3,'ESPONJA'],[2,'PANO DE PRATO'],[2,'SACO DE LIXO 40L'],
+      [1,'SACO DE LIXO 100L'],[1,'SABAO LIQUIDO 5L'],[1,'SABONETE LIQUIDO 5L'],[4,'PAPEL TOALHA'],[3,'INSETICIDA'],
+      [1,'BORRIFADOR'],[10,'AÇUCAR'],[7,'PAPEL HIGIENICO'],[2,'LUSTRA MOVEL'],[20,'CAFE'],[10,'BOLACHA'],
+      [1,'EXTENSÃO DE 10 METROS'],[1,'APAGADOR'],[1,'CAIXA DE GIZ'],[2,'PINCEL PARA QUADRO BRANCO'],
+    ]},
+  { codigo:'heraclito', nome:'Loja Heraclito', local:'SEDE NACIONAL',
+    itens:[
+      [3,'SACO P/ LIXO 60L COM 100 UNI'],[1,'SACO P/ LIXO 100L'],[10,'BOM AR LAVANDA'],[3,'INSCETICIDA'],
+      [1,'ÁGUA SANITARIA 5L'],[2,'DESINFETANTE 5L (HERBAL)'],[1,'SABONETE LIQUIDO 5L'],[1,'PAPEL HIGIENICO'],
+      [1,'PERFEX UM ROLO'],[2,'VASSOURA'],[1,'BARRA SABÃO YPE C/ 5UN'],[1,'COPOS DESCARTAVEIS 150ML'],
+      [10,'AÇUCAR'],[10,'CAFÉ'],[10,'BISCOITO MINI CRACKER'],[3,'BORRACHA ESCOLAR'],[2,'CLIPS'],
+      [5,'FONE DE OUVIDO GAMER'],[8,'RESMA DE A4'],[12,'PILHA PALITO'],[3,'LAPISEIRA'],
+    ]},
+  { codigo:'messejana', nome:'Loja Messejana', local:'Messejana',
+    itens:[
+      [3,'INCETECIDA'],[3,'VEJA'],[1,'AGUA SANITARIA 5L'],[1,'SABONETE LIQUIDO 500ML'],[4,'BOM AR'],
+      [1,'DESINFETANTE 5L'],[1,'SACO DE LIXO 40L'],[3,'PERFEX COM 5 UNI'],[3,'PANO DE CHAO'],[3,'PEDRA SANITARIA'],
+      [1,'SABAO DE LAVAR LOUÇA'],[2,'PANO DE PRATO'],[3,'PAPEL HIGIENICO'],
+    ]},
+];
+
+let db = null;
+function log(msg, cls){ const el=document.getElementById('log'); el.innerHTML += `\n<span class="${cls||''}">${msg}</span>`; el.scrollTop = el.scrollHeight; }
+const norm = s => (s||'').trim().toUpperCase();
+
+async function rodar(){
+  const btn = document.getElementById('btn'); btn.disabled = true;
+  document.getElementById('log').innerHTML = 'Iniciando…';
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    log('Conectado ao Firebase ✓', 'ok');
+  } catch(e){ log('Erro ao conectar: '+e.message, 'err'); btn.disabled=false; return; }
+
+  let okLojas = 0, criadas = 0, erros = 0;
+  for (const L of LOJAS) {
+    try {
+      const ref = db.collection('lojas').doc(L.codigo);
+      let snap = await ref.get();
+      // Cria a loja Sindtaxi se não existir
+      if (!snap.exists) {
+        if (L.criarLoja) {
+          await ref.set({
+            codigo:L.codigo, nome:L.nome, localidade:L.local, endereco:'',
+            acessoId:L.codigo.slice(0,3).toUpperCase()+Math.floor(1000+Math.random()*9000),
+            senha:SENHA_PADRAO_LOJA, solicitanteNome:'', cadastrado:false,
+            criadoEm:new Date().toISOString(), itens:[],
+          });
+          criadas++; log(`🏬 Loja criada: ${L.nome}`, 'ok');
+          snap = await ref.get();
+        } else {
+          log(`✗ Loja não encontrada no banco: ${L.nome} (pulada)`, 'err'); erros++; continue;
+        }
+      }
+      // Preenche a coluna JUN da grade
+      const data = snap.data();
+      const itens = Array.isArray(data.itens) ? data.itens.slice() : [];
+      let novos = 0, atualizados = 0, totalJun = 0;
+      for (const [qtd, desc] of L.itens) {
+        let it = itens.find(x => norm(x.descricao) === norm(desc));
+        if (it) { it.jun = qtd; atualizados++; }
+        else { const n = novoItemZerado(desc); n.jun = qtd; itens.push(n); novos++; }
+        totalJun += qtd;
+      }
+      await ref.update({ itens });
+      okLojas++;
+      log(`✓ ${L.nome} · junho = ${totalJun} un · ${atualizados} itens atualizados, ${novos} novos`, 'ok');
+    } catch(e){ erros++; log(`✗ ${L.nome}: ${e.message}`, 'err'); }
+  }
+
+  // Corrige a data do pedido da Maracanaú (estava como maio, é junho)
+  try {
+    await db.collection('pedidos').doc('SOL-2026-05-563ADD').update({ data:'2026-06-01' });
+    log('✓ Pedido da Maracanaú corrigido para junho/2026', 'ok');
+  } catch(e){ log('• Pedido da Maracanaú não ajustado: '+e.message, 'muted'); }
+
+  // Conferência final
+  try {
+    const all = await db.collection('lojas').get();
+    log(`\nTotal de lojas no banco agora: ${all.size}`, all.size>=8?'ok':'err');
+  } catch(e){}
+
+  log('──────────────────────────', 'muted');
+  log(`CONCLUÍDO: ${okLojas} lojas com junho preenchido · ${criadas} criada(s) · ${erros} erro(s)`, erros?'err':'ok');
+  log('Agora SAIA e ENTRE de novo no sistema (ou Ctrl+Shift+R) para ver junho na grade.', 'muted');
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
