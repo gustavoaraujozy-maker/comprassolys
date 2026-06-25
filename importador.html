@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SOLYS · Importador de Pedidos (Junho/2026)</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0e1116; color:#e6e8ee; margin:0; padding:24px; }
+  .wrap { max-width:720px; margin:0 auto; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  p.sub { color:#9aa3b2; margin:0 0 20px; font-size:14px; }
+  button { background:#c89b3c; color:#1a1407; border:0; padding:14px 22px; font-size:15px; font-weight:700; border-radius:10px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .card { background:#161b22; border:1px solid #232a35; border-radius:12px; padding:18px; margin-bottom:16px; }
+  .log { background:#0a0d12; border:1px solid #232a35; border-radius:10px; padding:14px; font-family:ui-monospace,monospace; font-size:13px; line-height:1.6; white-space:pre-wrap; max-height:340px; overflow:auto; margin-top:16px; }
+  .ok { color:#5ad19a; } .err { color:#ff6b6b; } .muted { color:#9aa3b2; }
+  .big { font-size:26px; font-weight:800; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📦 Importador de Pedidos · SOLYS</h1>
+  <p class="sub">Cadastra os pedidos de Maio/Junho de 2026 no Firebase. Cria a loja <b>Sindtaxi</b> se não existir. Pode rodar mais de uma vez sem duplicar (cada pedido tem ID fixo pelo código SOL).</p>
+
+  <div class="card">
+    <div class="big" id="count">8 pedidos · 8 lojas</div>
+    <p class="muted">Maracanaú, Bezerra, Caucaia, Pacajus, Sindtaxi (nova), Montese, Heraclito, Messejana</p>
+    <button id="btn" onclick="importar()">▶ Importar pedidos agora</button>
+  </div>
+
+  <div class="log" id="log">Pronto. Clique no botão acima para começar.</div>
+</div>
+
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAfvxijhjwsNoYcJz6Oj35exa9Pzu5qZtk",
+  authDomain: "comprassolys.firebaseapp.com",
+  projectId: "comprassolys",
+  storageBucket: "comprassolys.firebasestorage.app",
+  messagingSenderId: "267131800601",
+  appId: "1:267131800601:web:175909f9edf7c03ec22e88"
+};
+
+// [qtd, descrição, unidade]
+const PEDIDOS = [
+  { codigo:'maracana', nome:'Loja Maracanaú', local:'Maracanaú', code:'SOL-2026-05-563ADD', data:'2026-05-01',
+    obs:'TINTAS DA IMPRESSORA: 1 PRETA 1 AZUL 1 ROSA 1 AMARELO',
+    itens:[
+      [6,'PEDRA SANITARIA','un'],[1,'VEJA','un'],[4,'COPO 150 ML','un'],[1,'DESINFETANTE 5L','un'],
+      [4,'ESPONJA','un'],[2,'INCETECIDA','un'],[1,'AGUA SANITARIA 5L','un'],[4,'BOM AR','un'],
+      [2,'SACO DE LIXO GRANDE','pct'],[3,'SACO DE LIXO PEQUENO','pct'],[1,'LUSTRA MOVEIS','un'],[1,'BOMBRIL','un'],
+      [2,'PANO DE CHÃO','un'],[4,'PAPEL HIGIÊNICO','pct'],[1,'SABÃO EM BARRA (TABLETE)','un'],[2,'COPO DE CAFÉ','un'],
+      [1,'GARRAFA DE CAFÉ 1L','un'],[4,'BISCOITO DOCE','un'],[4,'BISCOITO SALGADO','un'],[7,'CAFÉ','un'],
+      [4,'AÇUCAR','un'],[4,'TINTA P/ IMPRESSORA HP SMART TANK 581','un'],[8,'PILHA PALITO P/ CONTROLE','un'],
+    ]},
+  { codigo:'bezerra', nome:'Loja Bezerra', local:'ADMINISTRATIVO', code:'SOL-2026-06-55A5DA', data:'2026-06-01', obs:'',
+    itens:[
+      [2,'SABAO LIQUIDO 5L','un'],[2,'SABONETE LIQUIDO 5L','un'],[2,'DESINFETANTE 5L','un'],[1,'ALCOOL GEL 5L','un'],
+      [6,'VEJA','un'],[6,'LUSTRA MOVEL','un'],[8,'ESPONJA LAVA LOUÇA','un'],[2,'SACO DE LIXO 100L','un'],
+      [4,'SACO DE LIXO 40L','un'],[4,'PAPEL HIGIÊNICO FARDO','un'],[9,'BOM AR','un'],[35,'CAFE','un'],[20,'AÇÚCAR','un'],
+    ]},
+  { codigo:'caucaia', nome:'Loja Caucaia', local:'Caucaia', code:'SOL-2026-06-061E9C', data:'2026-06-01', obs:'',
+    itens:[
+      [1,'ISQUEIRO','un'],[1,'AGULHA DESENTUPIDORA DE FOGÃO','un'],[3,'PAPEL TOALHA','un'],[4,'ESPONJA','un'],
+      [2,'DESINFETANTE 5L','un'],[1,'SABAO LIQUIDO 5L','un'],[1,'DETERGENTE 5L','un'],[2,'AGUA SANITARIA 5L','un'],
+      [1,'SACO DE LIXO 40 LITROS','un'],[4,'BOM AR','un'],[1,'LUVA G','un'],[6,'PEDRA SANITARIA','un'],
+      [4,'COPO 150 ML','un'],[1,'TINTA IMPRESSORA EPSON L1250 (TODAS AS CORES)','un'],[2,'RESMA DE FOLHA BRANCA','un'],
+      [2,'PINCEL PARA LOUSA BRANCA','un'],[1,'CABO USB GRANDE P/ IMPRESSORA (2.0 AX)','un'],[15,'BOLACHA DOCE','un'],
+      [15,'CAFÉ','un'],[15,'AÇUCAR','un'],[1,'LOUSA BRANCA','un'],[4,'PERFEX','un'],[3,'FLANELA','un'],
+      [5,'CANETA','un'],[2,'MARCA TEXTO','un'],[2,'POST IT','un'],[2,'COPO DE CAFÉ','un'],[3,'INSETICIDA','un'],
+    ]},
+  { codigo:'pacajus', nome:'Loja Pacajus', local:'Pacajus', code:'SOL-2026-06-5E2E92', data:'2026-06-01', obs:'',
+    itens:[
+      [1,'AGUA SANITARIA 5L','un'],[3,'BOM AR','un'],[2,'DESINFETANTE 5L','un'],[1,'SABAO LIQUIDO 5L','un'],
+      [4,'PEDRA SANITARIA','un'],[8,'BOLACHA DOCE/SALGADA','un'],[5,'AÇÚCAR','un'],[8,'CAFÉ','un'],
+    ]},
+  { codigo:'sindtaxi', nome:'Loja Sindtaxi', local:'Sindtaxi', code:'SOL-2026-06-F27446', data:'2026-06-01', obs:'Para entregar na Bezerra', criarLoja:true,
+    itens:[
+      [1,'SACO DE LIXO 40L C/100 UN','pc'],[1,'INSETICIDA MULTI','un'],[1,'PÁ','un'],
+      [5,'BISCOITO SALGADO','pc'],[1,'BALDE','un'],
+    ]},
+  { codigo:'montese', nome:'Loja Montese', local:'Montese', code:'SOL-2026-06-4D475C', data:'2026-06-01', obs:'',
+    itens:[
+      [10,'PEDRA SANITARIA','un'],[2,'DESINFETANTE 5L','un'],[2,'COPO CAFE','un'],[10,'COPO 150 ML','un'],
+      [2,'PERFEX COM 5 UNIDADE','un'],[4,'VEJA','un'],[5,'BOM AR','un'],[3,'PANO DE CHAO','un'],[3,'ESPONJA','un'],
+      [2,'PANO DE PRATO','un'],[2,'SACO DE LIXO 40L','un'],[1,'SACO DE LIXO 100L','un'],[1,'SABAO LIQUIDO 5L','un'],
+      [1,'SABONETE LIQUIDO 5L','un'],[4,'PAPEL TOALHA','pac'],[3,'INSETICIDA','un'],[1,'BORRIFADOR','un'],
+      [10,'AÇUCAR','un'],[7,'PAPEL HIGIENICO','un'],[2,'LUSTRA MOVEL','un'],[20,'CAFE','un'],[10,'BOLACHA','un'],
+      [1,'EXTENSÃO DE 10 METROS','un'],[1,'APAGADOR','un'],[1,'CAIXA DE GIZ','un'],[2,'PINCEL PARA QUADRO BRANCO','un'],
+    ]},
+  { codigo:'heraclito', nome:'Loja Heraclito', local:'SEDE NACIONAL', code:'SOL-2026-06-09B818', data:'2026-06-01', obs:'',
+    itens:[
+      [3,'SACO P/ LIXO 60L COM 100 UNI','pc'],[1,'SACO P/ LIXO 100L','pc'],[10,'BOM AR LAVANDA','un'],[3,'INSCETICIDA','un'],
+      [1,'ÁGUA SANITARIA 5L','un'],[2,'DESINFETANTE 5L (HERBAL)','un'],[1,'SABONETE LIQUIDO 5L','un'],[1,'PAPEL HIGIENICO','fd'],
+      [1,'PERFEX UM ROLO','pc'],[2,'VASSOURA','un'],[1,'BARRA SABÃO YPE C/ 5UN','un'],[1,'COPOS DESCARTAVEIS 150ML','cx'],
+      [10,'AÇUCAR','un'],[10,'CAFÉ','un'],[10,'BISCOITO MINI CRACKER','pc'],[3,'BORRACHA ESCOLAR','un'],[2,'CLIPS','cx'],
+      [5,'FONE DE OUVIDO GAMER','un'],[8,'RESMA DE A4','un'],[12,'PILHA PALITO','un'],[3,'LAPISEIRA','un'],
+    ]},
+  { codigo:'messejana', nome:'Loja Messejana', local:'Messejana', code:'SOL-2026-06-449680', data:'2026-06-01', obs:'',
+    itens:[
+      [3,'INCETECIDA','un'],[3,'VEJA','un'],[1,'AGUA SANITARIA 5L','un'],[1,'SABONETE LIQUIDO 500ML','un'],
+      [4,'BOM AR','un'],[1,'DESINFETANTE 5L','un'],[1,'SACO DE LIXO 40L','un'],[3,'PERFEX COM 5 UNI','un'],
+      [3,'PANO DE CHAO','un'],[3,'PEDRA SANITARIA','un'],[1,'SABAO DE LAVAR LOUÇA','un'],[2,'PANO DE PRATO','un'],
+      [3,'PAPEL HIGIENICO','un'],
+    ]},
+];
+
+const SENHA_PADRAO_LOJA = 'Sgroup@2026#';
+let db = null;
+function log(msg, cls){ const el=document.getElementById('log'); el.innerHTML += `\n<span class="${cls||''}">${msg}</span>`; el.scrollTop = el.scrollHeight; }
+
+async function importar(){
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  document.getElementById('log').innerHTML = 'Iniciando…';
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    log('Conectado ao Firebase ✓', 'ok');
+  } catch(e){ log('Erro ao conectar: '+e.message, 'err'); btn.disabled=false; return; }
+
+  let okPed = 0, okLoja = 0, erros = 0;
+  for (const ped of PEDIDOS) {
+    try {
+      // 1) Cria a loja se for marcada (Sindtaxi) e ainda não existir
+      if (ped.criarLoja) {
+        const ref = db.collection('lojas').doc(ped.codigo);
+        const snap = await ref.get();
+        if (!snap.exists) {
+          await ref.set({
+            codigo: ped.codigo, nome: ped.nome, localidade: ped.local, endereco: '',
+            acessoId: ped.codigo.slice(0,3).toUpperCase() + Math.floor(1000+Math.random()*9000),
+            senha: SENHA_PADRAO_LOJA, solicitanteNome: '', cadastrado: false,
+            criadoEm: new Date().toISOString(), itens: [],
+          });
+          okLoja++;
+          log(`🏬 Loja criada: ${ped.nome}`, 'ok');
+        } else {
+          log(`🏬 Loja já existe: ${ped.nome} (mantida)`, 'muted');
+        }
+      }
+      // 2) Grava o pedido (ID = código SOL → não duplica)
+      const itens = ped.itens.map(([q,d,u]) => ({ descricao: d, quantidade: q, unidade: u }));
+      const totalUn = itens.reduce((s,i)=>s+i.quantidade,0);
+      await db.collection('pedidos').doc(ped.code).set({
+        lojaId: ped.codigo, lojaNome: ped.nome, lojaLocal: ped.local,
+        data: ped.data, solicitante: 'Importação', observacao: ped.obs || '',
+        anexos: [], itens, historico: [{ at:new Date().toISOString(), by:'Importação', action:'importado do PDF' }],
+        status: 'Pendente', respondidoPor: '', respostaAdmin: '',
+        criadoEm: new Date().toISOString(),
+      });
+      okPed++;
+      log(`✓ ${ped.nome} · ${ped.code} · ${itens.length} itens (${totalUn} un)`, 'ok');
+    } catch(e){
+      erros++;
+      log(`✗ ${ped.nome}: ${e.message}`, 'err');
+    }
+  }
+
+  log('\n──────────────────────────', 'muted');
+  log(`CONCLUÍDO: ${okPed} pedidos · ${okLoja} loja(s) nova(s) · ${erros} erro(s)`, erros? 'err':'ok');
+  log('Pode fechar esta página e abrir o sistema para conferir.', 'muted');
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
