@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>SOLYS · Central Administrativa</title>
+<meta name="description" content="SOLYS · Logística de Compras — sistema interno de pedidos e relatórios de compras" />
+<meta name="theme-color" content="#06122a" />
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAwFBMVEX+/v4AAAD///8KN2cBKVrp1bESQnPVplPJlDQISIm0xNSSprvEjSlKaoyOqcTsxnQvU3rl6u6pucluiaV3lLHR2uNVc5MnS3Pmu2Tx04yEmrDis1ra4unpyorjzKXx5dEAGk4MUpfBzNhjfZrPnUIALmDJ0tw6XIH24rAAPYVdiLJqg562y+DgrlMzYpFWfaibttDu3sUFMF5wmsQ4cK6/hh+90ufWoD7fvX/fv4b78NMAAAAAAAAAAAAAAAAAAAD15gl6AAAAQHRSTlP9AAb///7////////////////////////////////+/v///////////////////////v///////////wAAAAAAUzpWLQAAArdJREFUeNrtl9l2mzAQhtXOAEYKGCQ2A95wYydesnZ//wfrSNhOfCA9Nm6btKdzgYU08/FrNBKGvTvT2OsD3p9pb0DBf3v7ZjlXZ8V/u3AGg++dw8fORY8Ag84iKF4rGPSvXhcwPBMw7A/7Vofg+CM3gA99Mov5t+Vp8Y9Td30AuJ76J4TLG3fqHiqgjht+rPrk0p02AVMAFR4FCBBcMgPoaUBWK7ABk+MAcADI+tmAcuASALwOgCzLih3g8hTA9SEATgPYrgs1oKcBw7MAxRMAjwfY9g5QFMVmyITp6gpwagB0BGw6AWAP2DhODYDjAWi8twCnBlzCnwToKQBK5ny6oFP1i9P7ynI8FlCKBJG87XTOhpuiyOrNJFMbHqh/Jn+2IUM5C8AOZrmQknN554vImO/fcbqXIkoC2w4Ub4WEPF+pXFaV9HOlbm+XSkXCry2K1HK5jB4JtOYyX63yJiOMY90Xc8mr+AWZ5LNefy6fvH+5lWFbs0VJ+wmtgsRLzZnFvSBZBEI3RZpK+vEC88PyNGR84dFt1YhPJlyHahJCTDET3Y4QNchHtLUTrJjU/eGsccjHCFuoqGNKc4QSwLh6iBENgQbPWicwp+IxollqBOiKxvlOAYupDktmU/sGIYnbCAsETIVxtcPtQ8UeQPNCJVMjEKggW3IcUgk/ULGTFDPdWvUewGzqN68mARpRtWioPISJYCR2p8B/BpCI6fZROW2rtDURQieO5jLf5qJ8BiAJwb5KaMc3a9k8lRRUgEoXA2JOC48o68FwCzAJlJOgsYww47EwG56nmMcSdDxTEwTaybQeIUxMbrzUj6sFNt/UcpYkybY8fGrmpl65ihSZZkWqXlBFg6pkv83GlrGRZY3Ho3trRGbuRvd0sWj0OMCYYgiwh92b7rG+vsH/4//AZ9/f//H9A6A5QCC/odX5AAAAAElFTkSuQmCC" />
+<link rel="apple-touch-icon" href="data:image/png;base64,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" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -11,7 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.7.0/jspdf.plugin.autotable.min.js"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://unpkg.com/lucide@1.38.0"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 
@@ -1057,6 +1061,8 @@ table.data tbody tr:last-child td{border-bottom:none}
 .mes-mini .kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-300);font-weight:500}
 .mes-mini .kpi-value{font-size:20px !important;margin-top:4px}
 .mes-mini:hover{border-color:rgba(200,155,60,.3)}
+.mes-mini.mes-sel{border-color:var(--gold-400) !important;box-shadow:0 0 0 1px var(--gold-400)}
+.loja-table td.col-sel,.loja-table th.col-sel{background:rgba(200,155,60,.12) !important;box-shadow:inset 0 0 0 1px rgba(200,155,60,.25)}
 .mes-mini.mes-now{
   border-color:rgba(200,155,60,.5);
   background:linear-gradient(180deg, rgba(200,155,60,.08), rgba(200,155,60,.02));
@@ -4151,6 +4157,14 @@ function showLogin() {
     const ordenadas = [...state.lojas].sort((a,b)=>a.nome.localeCompare(b.nome));
     sel.innerHTML = `<option value="">Selecione sua loja</option>` +
       ordenadas.map(l => `<option value="${l.id}">${escapeHtml(l.nome)} — ${escapeHtml(l.localidade)}</option>`).join('');
+    // Pré-seleciona a última loja usada neste aparelho (só localStorage, sem custo)
+    try {
+      const ultima = localStorage.getItem('solys:ultimaLoja');
+      if (ultima && state.lojas.some(l => l.id === ultima)) {
+        sel.value = ultima;
+        setTimeout(()=>document.getElementById('loginSenha')?.focus(), 80);
+      }
+    } catch (e) {}
   }
   // Limpa campos
   const senhaInp = document.getElementById('loginSenha');
@@ -4203,6 +4217,9 @@ async function loginLoja(lojaId){
     toast('Acesso negado', 'Senha incorreta', 'error');
     return;
   }
+
+  // Lembra a loja neste aparelho para pré-selecionar no próximo login
+  try { localStorage.setItem('solys:ultimaLoja', lojaId); } catch (e) {}
 
   // Atualiza loja com dados frescos do server
   const fresh = await Cloud.getLoja(lojaId);
@@ -5928,7 +5945,7 @@ function renderLojaDetalhe() {
       ${MESES.map((m,i) => {
         const v = lojaTotalMes(loja, m);
         const isNow = m === mesNow;
-        return `<div class="kpi-card mes-mini ${isNow?'mes-now':''}" onclick="setLojaMes('${loja.id}','${m}')">
+        return `<div class="kpi-card mes-mini ${isNow?'mes-now':''}" onclick="setLojaMes(this, ${i})" title="Destacar ${MESES_LABEL[i]} na tabela">
           <div class="kpi-label">${MESES_LABEL[i]}</div>
           <div class="kpi-value" style="font-size:22px">${v}</div>
         </div>`;
@@ -5939,6 +5956,7 @@ function renderLojaDetalhe() {
       <div class="panel-head">
         <div><div class="panel-title">Itens da loja</div><div class="panel-sub">Edite as quantidades direto na tabela · clique e digite</div></div>
         <div style="display:flex;gap:6px;align-items:center">
+          <span id="lojaSearchCount" style="font-size:11px;color:var(--ink-300);white-space:nowrap"></span>
           <input id="lojaSearch" placeholder="Buscar item..." style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;width:100%;max-width:180px" />
         </div>
       </div>
@@ -5970,10 +5988,26 @@ function renderLojaDetalhe() {
   `;
   setTimeout(() => {
     document.getElementById('lojaSearch').addEventListener('input', e => {
-      const q = e.target.value.toLowerCase();
-      document.querySelectorAll('#lojaTbody tr').forEach(tr => {
-        tr.style.display = tr.dataset.desc.includes(q) ? '' : 'none';
+      const q = e.target.value.toLowerCase().trim();
+      const rows = document.querySelectorAll('#lojaTbody tr:not(.no-results-row)');
+      let visiveis = 0;
+      rows.forEach(tr => {
+        const mostra = tr.dataset.desc.includes(q);
+        tr.style.display = mostra ? '' : 'none';
+        if (mostra) visiveis++;
       });
+      // contador "X de Y" e aviso quando nada casa; o TOTAL do rodapé segue geral
+      const count = document.getElementById('lojaSearchCount');
+      if (count) count.textContent = q ? `${visiveis} de ${rows.length}` : '';
+      let vazio = document.querySelector('#lojaTbody .no-results-row');
+      if (!visiveis && q) {
+        if (!vazio) {
+          vazio = document.createElement('tr');
+          vazio.className = 'no-results-row';
+          vazio.innerHTML = `<td colspan="16" style="text-align:center;padding:18px;color:var(--ink-300);font-size:12.5px">Nenhum item encontrado para essa busca</td>`;
+          document.getElementById('lojaTbody').appendChild(vazio);
+        }
+      } else if (vazio) vazio.remove();
     });
   }, 50);
 }
@@ -6082,10 +6116,20 @@ async function delLojaItem(lojaId, itemId) {
   setTimeout(()=>lucide.createIcons(),50);
 }
 
-function setLojaMes(lojaId, mes) {
-  // placeholder - destaca visualmente
-  document.querySelectorAll('.mes-mini').forEach(el => el.classList.remove('mes-now'));
-  event.currentTarget.classList.add('mes-now');
+function setLojaMes(card, mesIdx) {
+  // Destaca o card clicado e a coluna do mês correspondente na tabela
+  const jaAtivo = card.classList.contains('mes-sel');
+  document.querySelectorAll('.mes-mini').forEach(el => el.classList.remove('mes-sel'));
+  document.querySelectorAll('#lojaTable .col-sel').forEach(el => el.classList.remove('col-sel'));
+  if (jaAtivo) return; // clicar de novo desmarca
+  card.classList.add('mes-sel');
+  // coluna 0 = descrição; meses começam na coluna 1
+  document.querySelectorAll('#lojaTable tr').forEach(tr => {
+    const cell = tr.children[mesIdx + 1];
+    if (cell) cell.classList.add('col-sel');
+  });
+  const th = document.querySelector('#lojaTable thead tr')?.children[mesIdx + 1];
+  th?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
 
 function openLojaModal() {
@@ -7733,13 +7777,17 @@ function renderAcessos(){
         <h1 class="page-title">Acessos das lojas</h1>
         <p class="page-sub">${cadastradas} cadastrada(s) · ${pendentes} aguardando 1º acesso · senha padrão <code class="mono" style="color:var(--gold-300)">Sgroup@2026#</code></p>
       </div>
+      <div class="page-actions">
+        <input id="acessosSearch" placeholder="Buscar loja..." oninput="filtrarAcessos(this.value)"
+          style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#fff;padding:8px 12px;border-radius:8px;font-size:12.5px;width:100%;max-width:220px" />
+      </div>
     </div>
 
     <div class="acessos-grid">
       ${state.lojas.map(l => {
         const showPwd = state._mostrarSenhas[l.id];
         const cIdx = lojaColorIdx(l.id);
-        return `<div class="acesso-card">
+        return `<div class="acesso-card" data-busca="${escapeHtml((l.nome+' '+l.localidade+' '+(l.solicitanteNome||'')).toLowerCase())}">
           <div class="ac-head">
             <div class="ped-store-ic c${cIdx}"><i data-lucide="store"></i></div>
             <div style="min-width:0;flex:1">
@@ -7794,7 +7842,22 @@ function renderAcessos(){
       </ol>
     </div>
   `;
-  setTimeout(()=>lucide.createIcons(), 30);
+  setTimeout(()=>{
+    lucide.createIcons();
+    // Restaura o filtro após re-render (ex.: ao mostrar/ocultar senha)
+    if (state._acessosBusca) {
+      const inp = document.getElementById('acessosSearch');
+      if (inp) { inp.value = state._acessosBusca; filtrarAcessos(state._acessosBusca); }
+    }
+  }, 30);
+}
+
+function filtrarAcessos(q){
+  state._acessosBusca = q;
+  const termo = (q||'').toLowerCase().trim();
+  document.querySelectorAll('.acesso-card').forEach(card => {
+    card.style.display = !termo || (card.dataset.busca||'').includes(termo) ? '' : 'none';
+  });
 }
 
 function abrirEditarEndereco(lojaId){
