@@ -161,6 +161,12 @@ a{color:inherit;text-decoration:none}
   display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;
   color:var(--ink-300);margin-bottom:6px;font-weight:600;
 }
+/* Olho de senha genérico (modais fora do login) */
+.pwd-wrap{position:relative}
+.pwd-wrap .fld{padding-right:42px}
+.pwd-wrap .pwd-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--ink-300);cursor:pointer;padding:6px;display:flex;align-items:center}
+.pwd-wrap .pwd-eye:hover{color:var(--gold-400)}
+.pwd-wrap .pwd-eye svg,.pwd-wrap .pwd-eye i{width:16px;height:16px}
 .login-card .select-wrap{position:relative}
 .login-card .select-wrap > svg,
 .login-card .select-wrap > i{
@@ -3251,7 +3257,7 @@ input[type=password], input[type=email], input[type=search]{
       </div>
     </div>
 
-    <button class="btn-primary" onclick="entrarLojaUnificado()">Entrar</button>
+    <button class="btn-primary" id="btnEntrarLoja" onclick="entrarLojaUnificado()">Entrar</button>
 
     <div class="login-admin-toggle">
       <button class="link-btn" onclick="toggleAdminLogin()">Acesso da gestão</button>
@@ -4157,6 +4163,9 @@ async function entrarLojaUnificado(){
   if (!lojaId) { toast('Atenção','Selecione sua loja','warning'); return; }
   // Coloca o valor no input lpw-<lojaId> esperado por loginLoja (compat)
   const senha = document.getElementById('loginSenha')?.value || '';
+  const btn = document.getElementById('btnEntrarLoja');
+  if (btn?.disabled) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Entrando...'; }
   // injeta um shadow input pra reusar loginLoja sem refatorar
   let shadow = document.getElementById(`lpw-${lojaId}`);
   if (!shadow) {
@@ -4165,9 +4174,12 @@ async function entrarLojaUnificado(){
     document.body.appendChild(shadow);
   }
   shadow.value = senha;
-  await loginLoja(lojaId);
-  // Remove o shadow após uso
-  shadow.remove();
+  try {
+    await loginLoja(lojaId);
+  } finally {
+    shadow.remove();
+    if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+  }
 }
 
 function togglePwd(inputId, btn){
@@ -4226,17 +4238,23 @@ function abrirCadastroPrimeiroAcesso(lojaId){
         Esse cadastro pode ser feito <b>apenas uma vez</b>. Depois de salvar, somente você (com sua senha pessoal) e a Diretoria terão acesso. Confira tudo antes de confirmar.
       </div>
       <label class="fld-label">Seu nome completo</label>
-      <input type="text" id="cadNome" class="fld" placeholder="Ex: Luís Gustavo" autofocus />
+      <input type="text" id="cadNome" class="fld" placeholder="Ex: Luís Gustavo" autofocus onkeydown="if(event.key==='Enter')concluirCadastroLoja('${lojaId}')" />
       <label class="fld-label" style="margin-top:12px">Endereço completo da loja</label>
-      <input type="text" id="cadEndereco" class="fld" placeholder="Ex: Av. Bezerra de Menezes, 1234 — Bairro, Fortaleza/CE" value="${escapeHtml(loja.endereco||'')}" />
+      <input type="text" id="cadEndereco" class="fld" placeholder="Ex: Av. Bezerra de Menezes, 1234 — Bairro, Fortaleza/CE" value="${escapeHtml(loja.endereco||'')}" onkeydown="if(event.key==='Enter')concluirCadastroLoja('${lojaId}')" />
       <label class="fld-label" style="margin-top:12px">Nova senha</label>
-      <input type="password" id="cadSenha1" class="fld" placeholder="Mín. 6 caracteres" />
+      <div class="pwd-wrap">
+        <input type="password" id="cadSenha1" class="fld" placeholder="Mín. 6 caracteres" onkeydown="if(event.key==='Enter')concluirCadastroLoja('${lojaId}')" />
+        <button type="button" class="pwd-eye" onclick="togglePwd('cadSenha1', this)" title="Mostrar/ocultar"><i data-lucide="eye"></i></button>
+      </div>
       <label class="fld-label" style="margin-top:12px">Confirme a nova senha</label>
-      <input type="password" id="cadSenha2" class="fld" placeholder="Repita a senha" onkeydown="if(event.key==='Enter')concluirCadastroLoja('${lojaId}')" />
+      <div class="pwd-wrap">
+        <input type="password" id="cadSenha2" class="fld" placeholder="Repita a senha" onkeydown="if(event.key==='Enter')concluirCadastroLoja('${lojaId}')" />
+        <button type="button" class="pwd-eye" onclick="togglePwd('cadSenha2', this)" title="Mostrar/ocultar"><i data-lucide="eye"></i></button>
+      </div>
     `,
     actions:`
       <button class="btn ghost" onclick="closeModal()">Cancelar</button>
-      <button class="btn gold" onclick="concluirCadastroLoja('${lojaId}')"><i data-lucide="user-plus"></i>Cadastrar e entrar</button>
+      <button class="btn gold" id="btnCadLoja" onclick="concluirCadastroLoja('${lojaId}')"><i data-lucide="user-plus"></i>Cadastrar e entrar</button>
     `
   });
   setTimeout(()=>{ lucide.createIcons(); document.getElementById('cadNome')?.focus(); },60);
@@ -4253,6 +4271,10 @@ async function concluirCadastroLoja(lojaId){
   if (!endereco || endereco.length < 5) { toast('Atenção','Informe o endereço completo da loja','warning'); return; }
   if (s1.length < 6) { toast('Atenção','A senha precisa ter no mínimo 6 caracteres','warning'); return; }
   if (s1 !== s2) { toast('Atenção','As senhas não conferem','warning'); return; }
+
+  // Evita duplo clique durante o salvamento no servidor
+  const btnCad = document.getElementById('btnCadLoja');
+  if (btnCad) { if (btnCad.disabled) return; btnCad.disabled = true; btnCad.style.opacity = '.6'; }
 
   // Re-checa no servidor antes de salvar — evita corrida de cadastro duplo
   if (Cloud.ok()) {
@@ -4626,8 +4648,10 @@ function navigate(route) {
     route = 'minha-lista';
   }
   state.route = route;
+  // rotas-filhas mantêm o item "pai" destacado no menu
+  const navRoute = { 'loja-detalhe':'lojas', 'search':'compras' }[route] || route;
   document.querySelectorAll('.nav-item').forEach(n => {
-    n.classList.toggle('active', n.dataset.route === route);
+    n.classList.toggle('active', n.dataset.route === navRoute);
   });
   const mt = document.getElementById('topbarMobileTitle');
   if (mt) mt.textContent = ROUTE_TITLES[route] || 'SOLYS';
@@ -4639,6 +4663,7 @@ function renderRoute() {
   const c = document.getElementById('content');
   c.style.opacity = '0';
   setTimeout(() => {
+    try {
     switch(state.route) {
       case 'dashboard': renderDashboard(); break;
       case 'lojas': renderLojas(); break;
@@ -4658,6 +4683,16 @@ function renderRoute() {
       default: renderDashboard();
     }
     updateBadges();
+    } catch (err) {
+      console.error('renderRoute falhou:', err);
+      c.innerHTML = `
+        <div class="empty-state">
+          <i data-lucide="alert-triangle"></i>
+          <h3>Algo deu errado ao abrir esta tela</h3>
+          <p>Tente novamente. Se o problema continuar, recarregue a página.</p>
+          <button class="btn" onclick="navigate('${state.user?.role === 'Colaborador' ? 'minha-lista' : 'pedidos-colab'}')">Voltar ao início</button>
+        </div>`;
+    }
     setTimeout(()=>{ lucide.createIcons(); c.style.opacity = '1'; }, 30);
   }, 80);
 }
@@ -5199,6 +5234,7 @@ function renderSolicitacoes() {
       </div>
     </div>
     <div class="table-wrap">
+      ${!state.requests.length ? '' : `
       <table class="data">
         <thead><tr>
           <th>Código</th><th>Título</th><th>Solicitante</th><th>Setor</th><th>Data</th><th>Valor</th><th>Status</th><th></th>
@@ -5217,7 +5253,7 @@ function renderSolicitacoes() {
             </tr>
           `).join('')}
         </tbody>
-      </table>
+      </table>`}
       ${!state.requests.length ? '<div class="empty-state"><i data-lucide="inbox"></i><h3>Nenhuma solicitação</h3><p>Crie a primeira solicitação.</p></div>' : ''}
     </div>
   `;
@@ -5312,7 +5348,7 @@ function renderDocumentos() {
                 <td class="cell-strong">${d.records||0} novos · ${d.updated||0} atualizados</td>
                 <td class="cell-mute">${escapeHtml(d.by)}</td>
                 <td class="cell-mute">${fmt.datetime(d.at)}</td>
-                <td style="text-align:right"><button class="row-action" onclick="viewDocumentInfo('${d.id}')"><i data-lucide="eye"></i></button></td>
+                <td style="text-align:right"><button class="row-action" onclick="viewDocumentInfo('${d.id}')" title="Ver detalhes"><i data-lucide="eye"></i></button></td>
               </tr>
             `).join('')}
           </tbody>
@@ -5903,7 +5939,7 @@ function renderLojaDetalhe() {
       <div class="panel-head">
         <div><div class="panel-title">Itens da loja</div><div class="panel-sub">Edite as quantidades direto na tabela · clique e digite</div></div>
         <div style="display:flex;gap:6px;align-items:center">
-          <input id="lojaSearch" placeholder="Buscar item..." style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;width:180px" />
+          <input id="lojaSearch" placeholder="Buscar item..." style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;width:100%;max-width:180px" />
         </div>
       </div>
       <div class="loja-table-wrap">
@@ -6622,7 +6658,7 @@ function abrirNovoPedido(editId) {
 
       <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end">
         <button class="btn ghost" onclick="renderMinhaLista()">Cancelar</button>
-        <button class="btn gold" onclick="salvarPedido(${editando ? `'${editando.id}'` : 'null'})"><i data-lucide="check"></i>${editando ? 'Salvar alterações' : 'Enviar pedido'}</button>
+        <button class="btn gold" id="btnSalvarPedido" onclick="salvarPedido(${editando ? `'${editando.id}'` : 'null'})"><i data-lucide="check"></i>${editando ? 'Salvar alterações' : 'Enviar pedido'}</button>
       </div>
     </div>
   `;
@@ -6694,6 +6730,12 @@ function usarReferencia() {
 }
 
 async function salvarPedido(editId) {
+  // Evita duplo clique: dois cliques rápidos criavam dois pedidos
+  if (state._salvandoPedido) return;
+  state._salvandoPedido = true;
+  const btnSalvar = document.getElementById('btnSalvarPedido');
+  if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.style.opacity = '.6'; }
+  try {
   const mesIdx = parseInt(document.getElementById('pedMes')?.value);
   const solic = document.getElementById('pedSolic').value.trim();
   const obs = document.getElementById('pedObs').value.trim();
@@ -6746,6 +6788,11 @@ async function salvarPedido(editId) {
   updateBadges();
   renderMinhaLista();
   setTimeout(()=>lucide.createIcons(),50);
+  } finally {
+    state._salvandoPedido = false;
+    const b = document.getElementById('btnSalvarPedido');
+    if (b) { b.disabled = false; b.style.opacity = ''; }
+  }
 }
 
 /* Soma cada item do pedido na grade mensal da loja (mês da data do pedido).
@@ -6903,10 +6950,91 @@ async function salvarEdicaoGestao(id){
   renderRoute();
 }
 
-/* BAIXAR Word — documento corporativo padronizado (Word/LibreOffice) */
+/* ----------------------------------------------------------------
+   PDF PADRÃO SOLYS — identidade visual oficial
+   ---------------------------------------------------------------- */
+// Logo oficial (JPEG otimizado p/ PDF, fundo branco)
+const SOLYS_LOGO_PDF = 'data:image/jpeg;base64,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';
+const PDF_LOGO_W = 26;                       // largura da logo em mm
+const PDF_LOGO_H = Math.round(26 * 292 / 360 * 10) / 10; // proporção original
+
+const PDF_NAVY  = [10, 61, 124];
+const PDF_GOLD  = [193, 148, 56];
+const PDF_DARK  = [17, 24, 39];
+const PDF_MUTED = [107, 114, 128];
+const PDF_LIGHT = [245, 247, 250];
+const PDF_GREY  = [213, 220, 230];
+
+/* Cabeçalho padrão: logo à esquerda + título/protocolo à direita.
+   Retorna o Y onde o conteúdo pode começar. */
+function pdfHeaderPadrao(doc, titulo, linha2, linha3) {
+  const W = doc.internal.pageSize.getWidth();
+  const M = 18;
+  try { doc.addImage(SOLYS_LOGO_PDF, 'JPEG', M, 6, PDF_LOGO_W, PDF_LOGO_H); }
+  catch (e) { /* fallback: texto se a imagem falhar */
+    doc.setTextColor(...PDF_NAVY); doc.setFont('helvetica','bold'); doc.setFontSize(20);
+    doc.text('SOLYS', M, 16);
+  }
+  doc.setTextColor(...PDF_NAVY);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text(titulo, W - M, 14, { align: 'right' });
+  if (linha2) {
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...PDF_GOLD);
+    doc.text(linha2, W - M, 20, { align: 'right' });
+  }
+  if (linha3) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...PDF_MUTED);
+    doc.text(linha3, W - M, 25, { align: 'right' });
+  }
+  // filete duplo institucional
+  doc.setFillColor(...PDF_NAVY);
+  doc.rect(M, 30, W - M * 2, 1.1, 'F');
+  doc.setFillColor(...PDF_GOLD);
+  doc.rect(M, 31.6, W - M * 2, 0.6, 'F');
+  return 40;
+}
+
+/* Rodapé + numeração em TODAS as páginas e cabeçalho slim nas páginas 2+ */
+function pdfFinalizarPaginas(doc, protocolo) {
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 18;
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    if (i > 1) { // cabeçalho slim de continuação
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...PDF_NAVY);
+      doc.text('SOLYS · Logística de Compras', M, 10);
+      doc.setFont('courier', 'normal');
+      doc.setTextColor(...PDF_MUTED);
+      doc.text(protocolo || '', W - M, 10, { align: 'right' });
+      doc.setFillColor(...PDF_GOLD);
+      doc.rect(M, 12.5, W - M * 2, 0.5, 'F');
+    }
+    doc.setDrawColor(...PDF_GREY);
+    doc.setLineWidth(0.2);
+    doc.line(M, H - 13, W - M, H - 13);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...PDF_MUTED);
+    doc.text('SOLYS · Gestão Administrativa — documento gerado eletronicamente', M, H - 8.5);
+    if (protocolo) { doc.setFont('courier', 'normal'); doc.text(protocolo, M, H - 5); }
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Página ${i} de ${total}`, W - M, H - 8.5, { align: 'right' });
+    doc.text(new Date().toLocaleString('pt-BR'), W - M, H - 5, { align: 'right' });
+  }
+}
+
+/* BAIXAR PDF DO PEDIDO — documento corporativo padronizado */
 function baixarPedidoWord(id){
-  // Mantém o nome da função pra preservar todas as chamadas existentes,
-  // mas agora gera PDF real (jsPDF) em vez de Word.
+  // Mantém o nome da função pra preservar todas as chamadas existentes.
   const p = state.pedidos.find(x => x.id === id);
   if (!p) return;
   const { jsPDF } = window.jspdf;
@@ -6919,53 +7047,20 @@ function baixarPedidoWord(id){
   const horaEmissao = new Date(p.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   const lojaAtual = state.lojas.find(l => l.id === p.lojaId);
   const enderecoCompleto = (lojaAtual?.endereco || p.lojaLocal || '—');
-  const movs = (p.historico||[]).filter(h => (h.action||'').includes('→')).slice(-5);
+  const anexos = p.anexos || [];
+  const historico = (p.historico || []);
 
-  // Cores institucionais
-  const NAVY = [10, 61, 124];
-  const GOLD = [193, 148, 56];
-  const DARK = [17, 24, 39];
-  const MUTED = [107, 114, 128];
-  const LIGHT = [245, 247, 250];
-  const GREY = [213, 220, 230];
-
+  const NAVY = PDF_NAVY, GOLD = PDF_GOLD, DARK = PDF_DARK, MUTED = PDF_MUTED, LIGHT = PDF_LIGHT, GREY = PDF_GREY;
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const M = 18;
+  const BOTTOM = H - 20; // não invadir o rodapé
 
-  // === CABEÇALHO ===
-  doc.setFillColor(...NAVY);
-  doc.rect(0, 0, W, 28, 'F');
-  // faixa dourada
-  doc.setFillColor(...GOLD);
-  doc.rect(0, 28, W, 1.5, 'F');
+  let y = pdfHeaderPadrao(doc, 'PEDIDO DE COMPRAS', `Nº ${proto}`, `Emitido em ${dataEmissao} às ${horaEmissao}`);
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(20);
-  doc.text('SOLYS', M, 14);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(...GOLD);
-  doc.text('LOGÍSTICA DE COMPRAS', M, 19);
-
-  // Lado direito do header
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('PEDIDO DE COMPRAS', W - M, 12, { align: 'right' });
-  doc.setFont('courier', 'normal');
-  doc.setFontSize(9);
-  doc.text(`Nº ${proto}`, W - M, 17, { align: 'right' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.text(`Emitido em ${dataEmissao} às ${horaEmissao}`, W - M, 21, { align: 'right' });
-
-  let y = 38;
-
-  // === SEÇÃO: DADOS DO PEDIDO ===
   const drawSection = (title) => {
+    if (y > BOTTOM - 20) { doc.addPage(); y = 20; }
     doc.setFillColor(...LIGHT);
     doc.rect(M, y, W - M*2, 7, 'F');
     doc.setFillColor(...GOLD);
@@ -6977,33 +7072,47 @@ function baixarPedidoWord(id){
     y += 11;
   };
 
+  // === DADOS DO PEDIDO (completos) ===
   drawSection('Dados do Pedido');
+  const statusCor = {
+    'Pendente':  [176, 122, 15],
+    'Aprovado':  [21, 128, 61],
+    'Em compra': [29, 78, 216],
+    'Entregue':  [15, 118, 110],
+    'Rejeitado': [185, 28, 28],
+  }[p.status] || DARK;
   const info = [
+    ['Protocolo',           proto],
     ['Unidade Solicitante', p.lojaNome || '—'],
+    ['Código da Unidade',   (lojaAtual?.codigo || p.lojaId || '—').toString().toUpperCase()],
+    ['Localidade',          lojaAtual?.localidade || p.lojaLocal || '—'],
     ['Endereço',            enderecoCompleto],
     ['Solicitante',         p.solicitante || '—'],
     ['Mês de Referência',   `${mes} de ${ano}`],
     ['Data de Emissão',     `${dataEmissao} às ${horaEmissao}`],
     ['Situação',            p.status || '—'],
+    ['Itens no Pedido',     `${p.itens.length} produto${p.itens.length > 1 ? 's' : ''} · ${totalUn} unidade${totalUn > 1 ? 's' : ''}`],
+    ['Anexos',              anexos.length ? `${anexos.length} arquivo${anexos.length > 1 ? 's' : ''}` : 'Nenhum'],
   ];
   doc.setFontSize(10);
   for (const [k, v] of info) {
+    if (y > BOTTOM - 6) { doc.addPage(); y = 20; }
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...MUTED);
     doc.text(`${k}:`, M, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...DARK);
+    doc.setFont('helvetica', k === 'Situação' ? 'bold' : 'normal');
+    doc.setTextColor(...(k === 'Situação' ? statusCor : DARK));
     const lines = doc.splitTextToSize(String(v), W - M - 60);
     doc.text(lines, M + 50, y);
     y += Math.max(5.5, lines.length * 5.5);
   }
   y += 4;
 
-  // === SEÇÃO: PRODUTOS ===
+  // === RELAÇÃO DE PRODUTOS ===
   drawSection('Relação de Produtos');
   doc.autoTable({
     startY: y,
-    margin: { left: M, right: M },
+    margin: { left: M, right: M, top: 18, bottom: 22 },
     head: [['Item', 'Qtd.', 'Un.', 'Descrição do Produto']],
     body: p.itens.map((it, i) => [
       String(i + 1).padStart(2, '0'),
@@ -7039,12 +7148,13 @@ function baixarPedidoWord(id){
 
   // === OBSERVAÇÕES ===
   if (p.observacao) {
-    drawSection('Observações');
-    doc.setFillColor(255, 251, 235);
-    doc.setDrawColor(...GOLD);
-    const obsLines = doc.splitTextToSize(p.observacao, W - M*2 - 6);
+    drawSection('Observações da Loja');
+    const obsLines = doc.splitTextToSize(p.observacao, W - M*2 - 8);
     const obsH = Math.max(10, obsLines.length * 5 + 4);
+    if (y + obsH > BOTTOM) { doc.addPage(); y = 20; }
+    doc.setFillColor(255, 251, 235);
     doc.rect(M, y, W - M*2, obsH, 'F');
+    doc.setDrawColor(...GOLD);
     doc.setLineWidth(1.5);
     doc.line(M, y, M, y + obsH);
     doc.setLineWidth(0.1);
@@ -7055,14 +7165,15 @@ function baixarPedidoWord(id){
     y += obsH + 5;
   }
 
-  // === RESPOSTA ===
+  // === RESPOSTA DA DIRETORIA ===
   if (p.respostaAdmin) {
     drawSection('Resposta da Diretoria');
-    doc.setFillColor(239, 246, 255);
-    doc.setDrawColor(46, 116, 201);
-    const respLines = doc.splitTextToSize(p.respostaAdmin, W - M*2 - 6);
+    const respLines = doc.splitTextToSize(p.respostaAdmin, W - M*2 - 8);
     const respH = Math.max(14, respLines.length * 5 + 8);
+    if (y + respH > BOTTOM) { doc.addPage(); y = 20; }
+    doc.setFillColor(239, 246, 255);
     doc.rect(M, y, W - M*2, respH, 'F');
+    doc.setDrawColor(46, 116, 201);
     doc.setLineWidth(1.5);
     doc.line(M, y, M, y + respH);
     doc.setLineWidth(0.1);
@@ -7077,26 +7188,50 @@ function baixarPedidoWord(id){
     y += respH + 5;
   }
 
-  // === HISTÓRICO ===
-  if (movs.length) {
-    if (y > H - 60) { doc.addPage(); y = M; }
+  // === ANEXOS ===
+  if (anexos.length) {
+    drawSection('Anexos do Pedido');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...DARK);
+    anexos.forEach((a, i) => {
+      if (y > BOTTOM - 6) { doc.addPage(); y = 20; }
+      doc.setTextColor(...GOLD);
+      doc.text('•', M + 2, y);
+      doc.setTextColor(...DARK);
+      const nomeLines = doc.splitTextToSize(`${a.nome || 'arquivo ' + (i+1)}`, W - M*2 - 10);
+      doc.text(nomeLines, M + 7, y);
+      y += Math.max(5.5, nomeLines.length * 5.5);
+    });
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED);
+    doc.text('Os arquivos originais estão disponíveis no sistema.', M + 2, y + 1);
+    y += 7;
+  }
+
+  // === HISTÓRICO COMPLETO DE TRAMITAÇÃO ===
+  if (historico.length) {
     drawSection('Histórico de Tramitação');
     doc.autoTable({
       startY: y,
-      margin: { left: M, right: M },
+      margin: { left: M, right: M, top: 18, bottom: 22 },
       head: [['Quando', 'Por', 'Ação']],
-      body: movs.slice().reverse().map(h => [
-        fmt.datetime(h.at), h.by, h.action,
+      body: historico.slice().reverse().map(h => [
+        fmt.datetime(h.at), h.by || '—',
+        // Helvetica do jsPDF não tem o glifo "→"
+        String(h.action || '—').replace(/→/g, '»'),
       ]),
       styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 2.5, textColor: DARK, lineColor: GREY, lineWidth: 0.1 },
       headStyles: { fillColor: LIGHT, textColor: NAVY, fontStyle: 'bold', fontSize: 8 },
+      columnStyles: { 0: { cellWidth: 40, textColor: MUTED }, 1: { cellWidth: 40 } },
+      alternateRowStyles: { fillColor: [249, 250, 252] },
     });
     y = doc.lastAutoTable.finalY + 6;
   }
 
-  // === ASSINATURAS (no rodapé) ===
-  const signY = H - 38;
-  if (y < signY - 6) y = signY;
+  // === ASSINATURAS ===
+  let signY = H - 40;
+  if (y > signY - 8) { doc.addPage(); y = 20; signY = H - 40; }
   doc.setDrawColor(...DARK);
   doc.setLineWidth(0.3);
   const colW = (W - M*2 - 14) / 2;
@@ -7113,16 +7248,7 @@ function baixarPedidoWord(id){
   doc.text(`Solicitante — ${p.lojaNome || ''}`, M + colW / 2, signY + 10, { align: 'center' });
   doc.text('Diretoria — SOLYS', M + colW + 14 + colW / 2, signY + 10, { align: 'center' });
 
-  // === RODAPÉ ===
-  doc.setDrawColor(...GREY);
-  doc.setLineWidth(0.2);
-  doc.line(M, H - 12, W - M, H - 12);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(...MUTED);
-  doc.text('SOLYS · Logística de Compras · ' + new Date().toLocaleString('pt-BR'), W / 2, H - 8, { align: 'center' });
-  doc.setFont('courier', 'normal');
-  doc.text(proto, W / 2, H - 5, { align: 'center' });
+  pdfFinalizarPaginas(doc, proto);
 
   const cleanName = (p.lojaNome || 'loja').replace(/[^a-zA-Z0-9]+/g, '_');
   doc.save(`${proto}_${cleanName}.pdf`);
@@ -7544,6 +7670,7 @@ function renderUsuarios() {
       </div>
     </div>
     <div class="table-wrap">
+      ${!state.users.length ? '<div class="empty-state"><i data-lucide="users"></i><h3>Nenhum usuário cadastrado</h3><p>Clique em "Novo usuário" para adicionar o primeiro.</p></div>' : `
       <table class="data">
         <thead><tr><th></th><th>Nome</th><th>E-mail</th><th>Função</th><th>Setor</th><th>Desde</th></tr></thead>
         <tbody>
@@ -7558,7 +7685,7 @@ function renderUsuarios() {
             </tr>
           `).join('')}
         </tbody>
-      </table>
+      </table>`}
     </div>
   `;
 }
@@ -7641,7 +7768,7 @@ function renderAcessos(){
               <div class="ac-val-row">
                 <code class="ac-val mono">${showPwd ? escapeHtml(l.senha||'') : '•'.repeat((l.senha||'').length || 8)}</code>
                 <button class="icon-btn" onclick="toggleMostrarSenha('${l.id}')" title="${showPwd?'Ocultar':'Mostrar'}"><i data-lucide="${showPwd?'eye-off':'eye'}"></i></button>
-                <button class="icon-btn" onclick="copiarTexto('${escapeHtml(l.senha||'')}','Senha')" title="Copiar"><i data-lucide="copy"></i></button>
+                <button class="icon-btn" onclick="copiarSenhaLoja('${l.id}')" title="Copiar"><i data-lucide="copy"></i></button>
               </div>
             </div>
           </div>
@@ -7727,6 +7854,13 @@ function copiarTexto(txt, label){
   navigator.clipboard.writeText(txt).then(()=>{
     toast(`${label} copiado`, txt, 'success');
   });
+}
+
+function copiarSenhaLoja(lojaId){
+  // Busca a senha no state em vez de interpolar no onclick:
+  // senhas com aspas/apóstrofo quebravam o atributo HTML.
+  const l = state.lojas.find(x => x.id === lojaId);
+  if (l) copiarTexto(l.senha || '', 'Senha');
 }
 
 function copiarAcessosCSV(){
@@ -7925,19 +8059,30 @@ async function exportPurchasesXLSX() {
 
 async function exportPurchasesPDF() {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  doc.setFontSize(18); doc.setTextColor(10,61,124);
-  doc.text('SOLYS · Relatório de Compras', 14, 18);
-  doc.setFontSize(10); doc.setTextColor(100);
-  doc.text(`Gerado em ${fmt.datetime(new Date())} por ${state.user.name}`, 14, 25);
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const M = 18;
+  const totalValor = state.purchases.reduce((s,p)=>s+(parseFloat(p.valor)||0),0);
+  const y = pdfHeaderPadrao(doc, 'RELATÓRIO DE COMPRAS',
+    `${state.purchases.length} registro${state.purchases.length === 1 ? '' : 's'}`,
+    `Gerado em ${fmt.datetime(new Date())} por ${state.user.name}`);
   doc.autoTable({
-    startY: 32,
+    startY: y,
+    margin: { left: M, right: M, top: 18, bottom: 22 },
     head: [['Código','Descrição','Fornecedor','Setor','Data','Valor','Status']],
     body: state.purchases.map(p => [p.codigo, p.descricao, p.fornecedor, p.setor, fmt.date(p.data), fmt.brl(parseFloat(p.valor)||0), p.status]),
-    styles:{ font:'helvetica', fontSize:8, cellPadding:2 },
-    headStyles:{ fillColor:[10,61,124], textColor:255, fontSize:9 },
-    alternateRowStyles:{ fillColor:[245,247,250] },
+    foot: [[
+      '', '', '', '',
+      { content: 'Total', styles: { halign: 'right', fontStyle: 'bold', textColor: PDF_NAVY } },
+      { content: fmt.brl(totalValor), styles: { fontStyle: 'bold', textColor: PDF_GOLD } },
+      '',
+    ]],
+    styles:{ font:'helvetica', fontSize:8, cellPadding:2.2, lineColor: PDF_GREY, lineWidth: 0.1, textColor: PDF_DARK },
+    headStyles:{ fillColor: PDF_NAVY, textColor:255, fontSize:8.5, fontStyle:'bold' },
+    footStyles:{ fillColor: PDF_LIGHT, lineWidth: { top: 0.5 } },
+    alternateRowStyles:{ fillColor:[249,250,252] },
+    columnStyles: { 5: { halign: 'right' } },
   });
+  pdfFinalizarPaginas(doc, `RELATÓRIO · ${new Date().toISOString().slice(0,10)}`);
   doc.save(`solys-compras-${new Date().toISOString().slice(0,10)}.pdf`);
   await pushLog('export', `Compras exportadas para PDF (${state.purchases.length} registros)`);
   toast('PDF gerado','Download iniciado','success');
@@ -7983,9 +8128,16 @@ function showModal({ title, body, onConfirm, confirmText = 'Confirmar', size = '
   `;
   overlay.classList.add('active');
   lucide.createIcons();
-  document.getElementById('modalOk').onclick = async () => {
-    const result = await onConfirm();
-    if (result !== false) closeModal();
+  document.getElementById('modalOk').onclick = async (ev) => {
+    const btn = ev.currentTarget;
+    if (btn.disabled) return; // evita duplo clique enquanto salva
+    btn.disabled = true; btn.style.opacity = '.6';
+    try {
+      const result = await onConfirm();
+      if (result !== false) closeModal();
+    } finally {
+      btn.disabled = false; btn.style.opacity = '';
+    }
   };
 }
 
