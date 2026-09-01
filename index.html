@@ -877,6 +877,11 @@ table.data tbody tr:last-child td{border-bottom:none}
   display:flex;flex-direction:column;gap:10px;
   pointer-events:none;
 }
+@media (max-width:768px){
+  /* No celular, os toasts saem de cima do sino/menu e vão para a base */
+  .toast-container{top:auto;bottom:16px;left:12px;right:12px;align-items:stretch}
+  .toast{min-width:0;max-width:none}
+}
 .toast{
   display:flex;align-items:center;gap:12px;
   padding:12px 16px;
@@ -3259,7 +3264,7 @@ input[type=password], input[type=email], input[type=search]{
       <div class="select-wrap">
         <i data-lucide="lock"></i>
         <input type="password" id="loginSenha" placeholder="Sua senha" autocomplete="off" onkeydown="if(event.key==='Enter')entrarLojaUnificado()" />
-        <button type="button" class="pwd-eye" onclick="togglePwd('loginSenha', this)" title="Mostrar/ocultar"><i data-lucide="eye"></i></button>
+        <button type="button" class="pwd-eye" onclick="togglePwd('loginSenha', this)" title="Mostrar/ocultar" aria-label="Mostrar ou ocultar senha"><i data-lucide="eye"></i></button>
       </div>
     </div>
 
@@ -3340,8 +3345,8 @@ input[type=password], input[type=email], input[type=search]{
         <span class="kbd">⌘K</span>
       </div>
       <div class="topbar-actions">
-        <button class="icon-btn mute-btn" id="muteBtn" onclick="toggleSound()" title="Som de notificações"><i data-lucide="volume-2"></i></button>
-        <button class="icon-btn" id="notifBtn" onclick="toggleNotifPop(event)" title="Notificações">
+        <button class="icon-btn mute-btn" id="muteBtn" onclick="toggleSound()" title="Som de notificações" aria-label="Ativar ou silenciar som de notificações"><i data-lucide="volume-2"></i></button>
+        <button class="icon-btn" id="notifBtn" onclick="toggleNotifPop(event)" title="Notificações" aria-label="Abrir notificações">
           <i data-lucide="bell"></i>
           <span class="bell-count" id="bellCount" style="display:none">0</span>
         </button>
@@ -4092,10 +4097,17 @@ function toast(title, desc = '', type = 'info') {
       ${desc ? `<div class="toast-desc">${escapeHtml(desc)}</div>` : ''}
     </div>
   `;
+  // No máximo 3 toasts na tela; os mais antigos saem
+  while (container.children.length >= 3) container.firstChild.remove();
   container.appendChild(el);
   lucide.createIcons();
-  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(40px)'; }, 3500);
-  setTimeout(() => el.remove(), 3900);
+  el.style.cursor = 'pointer';
+  el.title = 'Clique para fechar';
+  el.onclick = () => el.remove();
+  // Erros e avisos ficam mais tempo na tela que confirmações
+  const dur = (type === 'error' || type === 'warning') ? 6000 : 3500;
+  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(40px)'; }, dur);
+  setTimeout(() => el.remove(), dur + 400);
 }
 
 /* ----------------------------------------------------------------
@@ -4214,7 +4226,11 @@ async function loginLoja(lojaId){
   // Autentica conferindo a senha guardada no Firestore
   const { data, error } = await Cloud.signInLoja(loja.codigo, senha);
   if (error || !data?.session) {
-    toast('Acesso negado', 'Senha incorreta', 'error');
+    // Distingue senha errada de problema de conexão — antes tudo era "Senha incorreta"
+    const msg = error?.message || '';
+    if (msg === 'Senha incorreta') toast('Acesso negado', 'Senha incorreta', 'error');
+    else if (msg === 'Loja não encontrada') toast('Erro', 'Loja não encontrada no servidor', 'error');
+    else toast('Sem conexão', 'Não foi possível falar com o servidor. Verifique a internet e tente de novo.', 'error');
     return;
   }
 
@@ -4261,12 +4277,12 @@ function abrirCadastroPrimeiroAcesso(lojaId){
       <label class="fld-label" style="margin-top:12px">Nova senha</label>
       <div class="pwd-wrap">
         <input type="password" id="cadSenha1" class="fld" placeholder="Mín. 6 caracteres" onkeydown="if(event.key==='Enter')concluirCadastroLoja('${lojaId}')" />
-        <button type="button" class="pwd-eye" onclick="togglePwd('cadSenha1', this)" title="Mostrar/ocultar"><i data-lucide="eye"></i></button>
+        <button type="button" class="pwd-eye" onclick="togglePwd('cadSenha1', this)" title="Mostrar/ocultar" aria-label="Mostrar ou ocultar senha"><i data-lucide="eye"></i></button>
       </div>
       <label class="fld-label" style="margin-top:12px">Confirme a nova senha</label>
       <div class="pwd-wrap">
         <input type="password" id="cadSenha2" class="fld" placeholder="Repita a senha" onkeydown="if(event.key==='Enter')concluirCadastroLoja('${lojaId}')" />
-        <button type="button" class="pwd-eye" onclick="togglePwd('cadSenha2', this)" title="Mostrar/ocultar"><i data-lucide="eye"></i></button>
+        <button type="button" class="pwd-eye" onclick="togglePwd('cadSenha2', this)" title="Mostrar/ocultar" aria-label="Mostrar ou ocultar senha"><i data-lucide="eye"></i></button>
       </div>
     `,
     actions:`
@@ -4344,7 +4360,10 @@ async function entrarComoGestao(role) {
   // Autentica via Firestore (contas de gestão)
   const { data, error, conta } = await Cloud.signInDiretoria(pass);
   if (error || !data?.session) {
-    toast('Acesso negado','Senha incorreta','error'); return;
+    const msg = error?.message || '';
+    if (/senha|incorret|inválid/i.test(msg)) toast('Acesso negado','Senha incorreta','error');
+    else toast('Sem conexão','Não foi possível falar com o servidor. Tente de novo.','error');
+    return;
   }
   const u = (conta?.nome && state.users.find(x => x.name === conta.nome))
     || state.users.find(x => x.role === role)
@@ -4508,12 +4527,16 @@ async function onCloudPedidoEvent(payload) {
   }
   await Storage.set('solys:pedidos', state.pedidos);
   updateBadges();
-  if (['central','pedidos-colab','minha-lista','dashboard'].includes(state.route)) renderRoute();
+  if (!state._formPedidoAberto && ['central','pedidos-colab','minha-lista','dashboard'].includes(state.route)) renderRoute();
 }
 
 async function onCloudLojaItemEvent(payload) {
-  // Recarrega lojas do servidor pra refletir a grade atual
   if (!Cloud.ok()) return;
+  // Com o formulário de pedido aberto, não recarrega nem re-renderiza:
+  // o re-render apagava o que a pessoa digitava e cada evento fazia
+  // uma leitura da coleção inteira de lojas à toa.
+  if (state._formPedidoAberto) return;
+  // Recarrega lojas do servidor pra refletir a grade atual
   const lojas = await Cloud.loadLojas();
   if (lojas) {
     state.lojas = lojas;
@@ -4660,6 +4683,7 @@ const ROUTE_TITLES = {
 };
 
 function navigate(route) {
+  state._formPedidoAberto = false; // sair do formulário de pedido libera os re-renders
   // Colaborador só pode navegar para sua própria lista
   if (state.user && state.user.role === 'Colaborador' && route !== 'minha-lista') {
     route = 'minha-lista';
@@ -5716,13 +5740,8 @@ function renderHistorico() {
           <i data-lucide="filter"></i>
           <select id="fAction">
             <option value="">Todas ações</option>
-            <option value="create">criar</option>
-            <option value="update">atualizar</option>
-            <option value="delete">arquivar</option>
-            <option value="import">importar</option>
-            <option value="export">exportar</option>
-            <option value="login">login</option>
-            <option value="logout">logout</option>
+            ${[...new Set(state.logs.map(l=>l.action).filter(Boolean))].sort()
+              .map(a => `<option value="${escapeHtml(a)}" ${histFilter.action===a?'selected':''}>${escapeHtml(a)}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -5746,8 +5765,12 @@ function renderTimeline() {
     return true;
   }).slice(0, 200);
 
-  const iconMap = { login:'log-in', logout:'log-out', create:'plus-circle', update:'edit-3', delete:'archive', import:'upload', export:'download', seed:'database' };
-  const colorMap = { create:'green', update:'gold', delete:'red', import:'gold', export:'', login:'', logout:'', seed:'' };
+  const iconMap = { login:'log-in', logout:'log-out', create:'plus-circle', update:'edit-3', delete:'archive', import:'upload', export:'download', seed:'database',
+    'pedido-novo':'plus-circle', 'pedido-edit':'edit-3', 'pedido-edit-gestao':'edit-3', 'pedido-status':'refresh-cw', 'pedido-del':'trash-2', 'pedido-arq':'archive', 'pedido-resp':'message-square',
+    'loja-cadastro':'user-plus', 'loja-edit':'edit-3', 'loja-add':'plus-circle', 'loja-del':'trash-2', 'loja-endereco':'map-pin', 'loja-reset':'rotate-ccw', 'loja-acesso':'key-round' };
+  const colorMap = { create:'green', update:'gold', delete:'red', import:'gold', export:'', login:'', logout:'', seed:'',
+    'pedido-novo':'green', 'pedido-edit':'gold', 'pedido-edit-gestao':'gold', 'pedido-status':'gold', 'pedido-del':'red', 'pedido-arq':'', 'pedido-resp':'gold',
+    'loja-cadastro':'green', 'loja-edit':'gold', 'loja-add':'green', 'loja-del':'red', 'loja-endereco':'gold', 'loja-reset':'red', 'loja-acesso':'gold' };
 
   document.getElementById('timelineBody').innerHTML = filtered.length ? filtered.map(l => `
     <div class="tl-item">
@@ -5839,6 +5862,7 @@ function renderLojas() {
               <div style="flex:1;min-width:0">
                 <div class="loja-name">${escapeHtml(l.nome)}</div>
                 <div class="loja-local"><i data-lucide="map-pin" style="width:11px;height:11px;display:inline-block;vertical-align:-1px"></i> ${escapeHtml(l.localidade)}</div>
+                <div class="muted" style="font-size:11px;margin-top:4px">${(l.itens||[]).length} itens · <b style="color:var(--gold-400)">${lojaTotalMes(l, mesNow)}</b> un. no mês · ${lojaTotalAno(l)} no ano</div>
               </div>
               <i data-lucide="chevron-right" class="loja-arrow"></i>
             </div>
@@ -5941,7 +5965,7 @@ function renderLojaDetalhe() {
       </div>
     </div>
 
-    <div class="kpi-grid">
+    <div class="month-grid" style="margin-bottom:16px">
       ${MESES.map((m,i) => {
         const v = lojaTotalMes(loja, m);
         const isNow = m === mesNow;
@@ -6305,6 +6329,7 @@ function referenciaMesAnterior(loja) {
 }
 
 function renderMinhaLista() {
+  state._formPedidoAberto = false;
   const c = document.getElementById('content');
   let lojaId = getLojaSelecionada();
   let loja = state.lojas.find(l => l.id === lojaId);
@@ -6354,7 +6379,7 @@ function renderMinhaLista() {
         <p class="page-sub">
           <i data-lucide="map-pin" style="width:13px;height:13px;display:inline-block;vertical-align:-2px"></i>
           ${escapeHtml(loja.localidade)}
-          <button class="link-btn" onclick="trocarLojaColab()" style="margin-left:8px">trocar loja</button>
+          <button class="link-btn" onclick="trocarLojaColab()" style="margin-left:8px">${state.user?.isLoja ? 'sair e trocar de loja' : 'trocar loja'}</button>
         </p>
       </div>
       <div class="page-actions">
@@ -6456,10 +6481,13 @@ function renderHistoricoAnual(loja){
           <div class="year-title">
             <h3><i data-lucide="calendar-days" style="width:18px;height:18px;display:inline-block;vertical-align:-3px;color:var(--gold-400)"></i> Histórico ${ano}</h3>
             <span class="yr-badge ${isAtual?'yr-now':''}">${isAtual?'Atual':'Encerrado'}</span>
+            <span class="muted" style="font-size:11.5px">${mesesComDados} ${mesesComDados===1?'mês':'meses'} com dados · ${totalAno} un. no ano</span>
           </div>
-          <span class="year-collapse-btn ${collapsed?'col':''}" onclick="toggleAnoCol('${colKey}')">
+          <button type="button" class="year-collapse-btn ${collapsed?'col':''}" onclick="toggleAnoCol('${colKey}')"
+            aria-label="${collapsed?'Expandir':'Recolher'} histórico de ${ano}" aria-expanded="${!collapsed}"
+            style="background:none;border:0;color:inherit;cursor:pointer;padding:4px">
             <i data-lucide="chevron-down"></i>
-          </span>
+          </button>
         </header>
         <div class="year-panel-body ${collapsed?'collapsed':''}">
           <div class="month-grid">
@@ -6477,6 +6505,7 @@ function renderHistoricoAnual(loja){
               ].filter(Boolean).join(' ');
               return `<div class="${cls}" onclick="selecionarMesLoja('${loja.id}','${ano}','${m}')">
                 <div class="mc-name">${MESES_LABEL[i]}</div>
+                ${hasData ? `<div class="mc-val">${nItens}</div><div class="mc-sub">itens</div>` : `<div class="mc-sub">—</div>`}
               </div>`;
             }).join('')}
           </div>
@@ -6551,9 +6580,17 @@ function renderPedidoCardV2(p, opts={}){
   // Quick actions diferentes por modo e papel
   let quickActions = '';
   if (modo === 'gestao' && p.status === 'Pendente') {
-    quickActions = `<button class="qbtn go" onclick="aprovarRapido('${p.id}')"><i data-lucide="check"></i>Aprovar</button>`;
-  } else if (modo === 'gestao' && (p.status === 'Aprovado' || p.status === 'Em compra')) {
+    quickActions = `
+      <button class="qbtn go" onclick="aprovarRapido('${p.id}')"><i data-lucide="check"></i>Aprovar</button>
+      <button class="qbtn no" onclick="rejeitarPedido('${p.id}')" title="Rejeitar pedido"><i data-lucide="x"></i>Rejeitar</button>`;
+  } else if (modo === 'gestao' && p.status === 'Aprovado') {
+    quickActions = `
+      <button class="qbtn" onclick="marcarEmCompra('${p.id}')" title="Marcar como em compra"><i data-lucide="shopping-cart"></i>Em compra</button>
+      <button class="qbtn go" onclick="marcarEntregue('${p.id}')"><i data-lucide="package-check"></i>Marcar entregue</button>`;
+  } else if (modo === 'gestao' && p.status === 'Em compra') {
     quickActions = `<button class="qbtn go" onclick="marcarEntregue('${p.id}')"><i data-lucide="package-check"></i>Marcar entregue</button>`;
+  } else if (modo === 'gestao' && p.status === 'Rejeitado') {
+    quickActions = `<button class="qbtn" onclick="reverterParaPendente('${p.id}')" title="Voltar para a fila de aprovação"><i data-lucide="undo-2"></i>Reabrir</button>`;
   } else if (modo === 'gestao' && p.status === 'Entregue') {
     quickActions = `<button class="qbtn" onclick="reverterParaAprovado('${p.id}')" title="Voltar para Aprovados"><i data-lucide="undo-2"></i>Reverter</button>`;
   } else if (modo === 'colab' && p.status === 'Pendente') {
@@ -6570,7 +6607,9 @@ function renderPedidoCardV2(p, opts={}){
     quickActions += `<button class="qbtn" onclick="abrirDetalhePedido('${p.id}')" title="Detalhes"><i data-lucide="eye"></i></button>`;
   }
 
-  return `<div class="ped-v2 ${statusCls}">
+  const buscaTexto = [p.lojaNome, p.lojaLocal, p.solicitante, MES_NOME[isoToMesIdx(p.data)],
+    ...(p.itens||[]).map(i=>i.descricao)].join(' ').toLowerCase();
+  return `<div class="ped-v2 ${statusCls}" data-busca="${escapeHtml(buscaTexto)}">
     <div class="ped-top">
       <div class="ped-store">
         <div class="ped-store-ic c${cIdx}"><i data-lucide="store"></i></div>
@@ -6619,6 +6658,9 @@ function abrirNovoPedido(editId) {
   const lojaId = getLojaSelecionada();
   const loja = state.lojas.find(l => l.id === lojaId);
   if (!loja) return;
+  // Formulário aberto: eventos do Firestore não podem re-renderizar a tela
+  // e apagar o que a pessoa está digitando (ver onCloudLojaItemEvent)
+  state._formPedidoAberto = true;
   const editando = editId ? state.pedidos.find(p => p.id === editId) : null;
 
   // itens em edição (cópia de trabalho)
@@ -6742,13 +6784,33 @@ function renderLinhasPedido() {
   if (!wrap) return;
   wrap.innerHTML = state._pedidoItens.map((it, i) => `
     <div class="ped-linha">
-      <input type="number" min="0" class="fld ped-qtd" value="${it.quantidade|0}" onchange="setLinhaPedido(${i},'quantidade',this.value)" onfocus="this.select()" title="Quantidade" />
-      <input type="text" class="fld ped-uni" value="${escapeHtml(it.unidade||'un')}" onchange="setLinhaPedido(${i},'unidade',this.value)" title="Unidade" />
-      <input type="text" class="fld ped-desc" list="sugProdutos" placeholder="Nome do produto" value="${escapeHtml(it.descricao)}" onchange="setLinhaPedido(${i},'descricao',this.value)" />
-      <button class="icon-btn danger" onclick="removerLinhaPedido(${i})" title="Remover" ${state._pedidoItens.length<=1?'style="visibility:hidden"':''}><i data-lucide="x"></i></button>
+      <input type="number" min="0" inputmode="numeric" class="fld ped-qtd" value="${it.quantidade|0}" onchange="setLinhaPedido(${i},'quantidade',this.value)" onfocus="this.select()" onkeydown="navLinhaPedido(event,${i},'ped-qtd')" title="Quantidade" aria-label="Quantidade" />
+      <input type="text" class="fld ped-uni" value="${escapeHtml(it.unidade||'un')}" onchange="setLinhaPedido(${i},'unidade',this.value)" onkeydown="navLinhaPedido(event,${i},'ped-uni')" title="Unidade" aria-label="Unidade" />
+      <input type="text" class="fld ped-desc" list="sugProdutos" placeholder="Nome do produto" value="${escapeHtml(it.descricao)}" onchange="setLinhaPedido(${i},'descricao',this.value)" onkeydown="navLinhaPedido(event,${i},'ped-desc')" aria-label="Descrição do produto" />
+      <button class="icon-btn danger" onclick="removerLinhaPedido(${i})" title="Remover" aria-label="Remover item" ${state._pedidoItens.length<=1?'style="visibility:hidden"':''}><i data-lucide="x"></i></button>
     </div>
   `).join('');
   setTimeout(()=>lucide.createIcons(),20);
+}
+
+/* Enter = desce para o mesmo campo da próxima linha (cria linha se for a última);
+   setas ↑/↓ navegam na mesma coluna. Facilita preencher pedidos longos. */
+function navLinhaPedido(ev, i, col){
+  if (ev.key !== 'Enter' && ev.key !== 'ArrowDown' && ev.key !== 'ArrowUp') return;
+  if (ev.key === 'ArrowUp' && ev.target.type === 'number') return; // deixa o spinner funcionar
+  if (ev.key === 'ArrowDown' && ev.target.type === 'number') return;
+  ev.preventDefault();
+  ev.target.dispatchEvent(new Event('change')); // commita o valor antes de mover
+  let alvo = ev.key === 'ArrowUp' ? i - 1 : i + 1;
+  if (alvo >= state._pedidoItens.length) {
+    if (ev.key !== 'Enter') return;
+    addLinhaPedido();
+  }
+  if (alvo < 0) return;
+  setTimeout(() => {
+    const linhas = document.querySelectorAll('#pedItens .ped-linha');
+    linhas[alvo]?.querySelector('.' + col)?.focus();
+  }, 30);
 }
 function setLinhaPedido(i, campo, valor) {
   if (!state._pedidoItens[i]) return;
@@ -6757,6 +6819,11 @@ function setLinhaPedido(i, campo, valor) {
 function addLinhaPedido() {
   state._pedidoItens.push({ descricao:'', quantidade:0, unidade:'un' });
   renderLinhasPedido();
+  // Foca a descrição da linha recém-criada
+  setTimeout(() => {
+    const linhas = document.querySelectorAll('#pedItens .ped-linha');
+    linhas[linhas.length-1]?.querySelector('.ped-desc')?.focus();
+  }, 40);
 }
 function removerLinhaPedido(i) {
   state._pedidoItens.splice(i,1);
@@ -6792,8 +6859,11 @@ async function salvarPedido(editId) {
   if (isNaN(mesIdx)) { toast('Atenção','Escolha o mês do pedido','warning'); return; }
   if (!itens.length) { toast('Atenção','Preencha a quantidade de pelo menos um produto','warning'); return; }
 
-  // monta a data como o primeiro dia do mês escolhido (ano corrente)
-  const ano = new Date().getFullYear();
+  // monta a data como o primeiro dia do mês escolhido.
+  // Em edição, preserva o ano original do pedido (editar um pedido de ano
+  // anterior o jogava para o ano corrente e ele sumia do histórico).
+  const pedidoOriginal = editId ? state.pedidos.find(x => x.id === editId) : null;
+  const ano = pedidoOriginal?.data ? isoToAno(pedidoOriginal.data) : new Date().getFullYear();
   const data = `${ano}-${String(mesIdx+1).padStart(2,'0')}-01`;
 
   const lojaId = getLojaSelecionada();
@@ -6863,9 +6933,10 @@ async function somarPedidoNaGradeLoja(loja, itens, data){
       loja.itens.push(existente);
     }
     existente[mesKey] = (existente[mesKey]|0) + (it.quantidade|0);
-    // Persiste no Firestore
-    if (Cloud.ok()) await Cloud.incLojaItemMes(loja.id, desc, mesKey, it.quantidade|0);
   }
+  // Persiste UMA vez após o loop — _persistLojaItens grava o array inteiro,
+  // então chamar por item fazia N escritas idênticas do mesmo doc no Firestore.
+  if (Cloud.ok()) await Cloud._persistLojaItens(loja.id);
   await Storage.set('solys:lojas', state.lojas);
 }
 
@@ -6880,6 +6951,7 @@ async function rejeitarPedido(id){
 async function marcarEmCompra(id){ await mudarStatusPedidoLocal(id, 'Em compra'); }
 async function marcarEntregue(id){ await mudarStatusPedidoLocal(id, 'Entregue'); }
 async function reverterParaAprovado(id){ await mudarStatusPedidoLocal(id, 'Aprovado'); }
+async function reverterParaPendente(id){ await mudarStatusPedidoLocal(id, 'Pendente'); }
 async function mudarStatusPedidoLocal(id, novo){
   const p = state.pedidos.find(x=>x.id===id); if (!p || p.status===novo) return;
   const antigo = p.status;
@@ -7378,6 +7450,14 @@ async function abrirDetalhePedido(id){
       <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end;flex-wrap:wrap">
         ${state.user?.role !== 'Colaborador' ? `<button class="btn" onclick="closeModal();baixarPedidoWord('${p.id}')"><i data-lucide="file-text"></i>Baixar PDF</button>` : ''}
         ${state.user?.role !== 'Colaborador' && p.status==='Pendente' ? `<button class="btn gold" onclick="closeModal();editarPedidoGestao('${p.id}')"><i data-lucide="edit-3"></i>Editar</button>` : ''}
+        ${state.user?.role !== 'Colaborador' && p.status==='Pendente' ? `
+          <button class="btn" style="color:var(--danger)" onclick="closeModal();rejeitarPedido('${p.id}')"><i data-lucide="x"></i>Rejeitar</button>
+          <button class="btn gold" onclick="closeModal();aprovarRapido('${p.id}')"><i data-lucide="check"></i>Aprovar</button>` : ''}
+        ${state.user?.role !== 'Colaborador' && p.status==='Aprovado' ? `
+          <button class="btn" onclick="closeModal();marcarEmCompra('${p.id}')"><i data-lucide="shopping-cart"></i>Em compra</button>
+          <button class="btn gold" onclick="closeModal();marcarEntregue('${p.id}')"><i data-lucide="package-check"></i>Marcar entregue</button>` : ''}
+        ${state.user?.role !== 'Colaborador' && p.status==='Em compra' ? `
+          <button class="btn gold" onclick="closeModal();marcarEntregue('${p.id}')"><i data-lucide="package-check"></i>Marcar entregue</button>` : ''}
       </div>
     `,
     confirmText:'Fechar', onConfirm:()=>true
@@ -7419,14 +7499,22 @@ async function renderPedidosColab() {
   const c = document.getElementById('content');
   const all = [...state.pedidos];
 
-  // 3 grupos visíveis: Aprovar / Aprovados / Entregues
-  const aprovar  = all.filter(p => p.status === 'Pendente');
+  // Grupos visíveis: Aprovar / Aprovados / Entregues (+ Rejeitados sob demanda)
+  const aprovar   = all.filter(p => p.status === 'Pendente');
   const aprovados = all.filter(p => p.status === 'Aprovado' || p.status === 'Em compra');
   const entregues = all.filter(p => p.status === 'Entregue');
+  const rejeitados = all.filter(p => p.status === 'Rejeitado');
 
-  // ordena cada coluna por mais recente
-  const ordenar = arr => arr.sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
-  ordenar(aprovar); ordenar(aprovados); ordenar(entregues);
+  // Fila de aprovação: mais ANTIGO primeiro (o atrasado no topo).
+  aprovar.sort((a,b)=>new Date(a.criadoEm)-new Date(b.criadoEm));
+  aprovados.sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
+  // Entregues: ordena pela data da entrega (evento do histórico), não pela criação
+  const dataEntrega = p => {
+    const mov = (p.historico||[]).slice().reverse().find(h => (h.action||'').includes('→ Entregue'));
+    return new Date(mov ? mov.at : p.criadoEm).getTime();
+  };
+  entregues.sort((a,b)=>dataEntrega(b)-dataEntrega(a));
+  rejeitados.sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
 
   c.innerHTML = `
     <div class="page-header">
@@ -7435,16 +7523,42 @@ async function renderPedidosColab() {
         <p class="page-sub">${aprovar.length} aguardando · ${aprovados.length} aprovado(s) · ${entregues.length} entregue(s) · pedidos entregues somem após 20 dias</p>
       </div>
       <div class="page-actions">
+        <input id="pedBusca" placeholder="Buscar loja, item, solicitante..." oninput="filtrarCardsPedidos(this.value)"
+          style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#fff;padding:8px 12px;border-radius:8px;font-size:12.5px;width:100%;max-width:250px" />
+        ${rejeitados.length ? `<button class="btn ${state._mostrarRejeitados?'gold':''}" onclick="toggleRejeitados()"><i data-lucide="x-circle"></i>Rejeitados (${rejeitados.length})</button>` : ''}
         <button class="btn" onclick="exportPedidosXLSX()"><i data-lucide="file-spreadsheet"></i>Exportar</button>
       </div>
     </div>
 
     <div class="board-3">
-      ${renderBoardCol({ titulo:'Aprovar',   sub:'Aguardando sua aprovação',  cor:'red',   icone:'clock',         lista: aprovar })}
+      ${renderBoardCol({ titulo:'Aprovar',   sub:'Aguardando sua aprovação · mais antigos primeiro',  cor:'red',   icone:'clock',         lista: aprovar })}
       ${renderBoardCol({ titulo:'Aprovados', sub:'Aprovados / em compra',     cor:'blue',  icone:'check-circle',  lista: aprovados })}
       ${renderBoardCol({ titulo:'Entregues', sub:'Concluídos (somem em 20 dias)', cor:'green', icone:'package-check', lista: entregues })}
     </div>
+    ${state._mostrarRejeitados && rejeitados.length ? `
+    <div class="board-3" style="margin-top:16px;grid-template-columns:1fr">
+      ${renderBoardCol({ titulo:'Rejeitados', sub:'Pedidos recusados — podem ser reabertos', cor:'red', icone:'x-circle', lista: rejeitados })}
+    </div>` : ''}
   `;
+  // Restaura a busca após re-render (ex.: ao aprovar um pedido)
+  if (state._buscaPed) {
+    const inp = document.getElementById('pedBusca');
+    if (inp) { inp.value = state._buscaPed; filtrarCardsPedidos(state._buscaPed); }
+  }
+}
+
+function toggleRejeitados(){
+  state._mostrarRejeitados = !state._mostrarRejeitados;
+  renderPedidosColab();
+  setTimeout(()=>lucide.createIcons(),50);
+}
+
+function filtrarCardsPedidos(q){
+  state._buscaPed = q;
+  const termo = (q||'').toLowerCase().trim();
+  document.querySelectorAll('.board-list .ped-v2').forEach(card => {
+    card.style.display = !termo || (card.dataset.busca||'').includes(termo) ? '' : 'none';
+  });
 }
 
 function renderBoardCol({ titulo, sub, cor, icone, lista }){
@@ -7718,7 +7832,7 @@ function renderUsuarios() {
       <table class="data">
         <thead><tr><th></th><th>Nome</th><th>E-mail</th><th>Função</th><th>Setor</th><th>Desde</th></tr></thead>
         <tbody>
-          ${state.users.map(u => `
+          ${[...state.users].sort((a,b)=>a.name.localeCompare(b.name)).map(u => `
             <tr>
               <td><div class="avatar" style="width:28px;height:28px;font-size:11px">${u.name.split(' ').slice(0,2).map(s=>s[0]).join('').toUpperCase()}</div></td>
               <td class="cell-strong">${escapeHtml(u.name)}</td>
@@ -7780,6 +7894,7 @@ function renderAcessos(){
       <div class="page-actions">
         <input id="acessosSearch" placeholder="Buscar loja..." oninput="filtrarAcessos(this.value)"
           style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#fff;padding:8px 12px;border-radius:8px;font-size:12.5px;width:100%;max-width:220px" />
+        <button class="btn" onclick="copiarAcessosCSV()" title="Copia loja, ID e senha de todas as lojas"><i data-lucide="clipboard-copy"></i>Copiar todos</button>
       </div>
     </div>
 
@@ -7812,6 +7927,13 @@ function renderAcessos(){
               </div>
             </div>
             <div class="ac-field">
+              <div class="ac-lbl">ID de acesso</div>
+              <div class="ac-val-row">
+                <code class="ac-val mono">${escapeHtml(l.acessoId||'—')}</code>
+                ${l.acessoId ? `<button class="icon-btn" onclick="copiarAcessoIdLoja('${l.id}')" title="Copiar ID"><i data-lucide="copy"></i></button>` : ''}
+              </div>
+            </div>
+            <div class="ac-field">
               <div class="ac-lbl">Senha atual</div>
               <div class="ac-val-row">
                 <code class="ac-val mono">${showPwd ? escapeHtml(l.senha||'') : '•'.repeat((l.senha||'').length || 8)}</code>
@@ -7822,6 +7944,8 @@ function renderAcessos(){
           </div>
           <div class="ac-acoes">
             <button class="qbtn" onclick="abrirEditarEndereco('${l.id}')" title="Editar endereço"><i data-lucide="map-pin"></i>Endereço</button>
+            <button class="qbtn" onclick="abrirEditarAcesso('${l.id}')" title="Editar ID de acesso e senha"><i data-lucide="key-round"></i>Editar acesso</button>
+            <button class="qbtn" onclick="resetarSenhaLoja('${l.id}')" title="Volta só a senha ao padrão, sem apagar o cadastro"><i data-lucide="rotate-ccw"></i>Resetar senha</button>
             <button class="qbtn" onclick="resetarCadastroLojaUI('${l.id}')" title="Limpa o cadastro e volta para a senha padrão"><i data-lucide="rotate-cw"></i>Resetar cadastro</button>
           </div>
         </div>`;
@@ -7924,6 +8048,11 @@ function copiarSenhaLoja(lojaId){
   // senhas com aspas/apóstrofo quebravam o atributo HTML.
   const l = state.lojas.find(x => x.id === lojaId);
   if (l) copiarTexto(l.senha || '', 'Senha');
+}
+
+function copiarAcessoIdLoja(lojaId){
+  const l = state.lojas.find(x => x.id === lojaId);
+  if (l) copiarTexto(l.acessoId || '', 'ID de acesso');
 }
 
 function copiarAcessosCSV(){
@@ -8181,7 +8310,7 @@ function showModal({ title, body, onConfirm, confirmText = 'Confirmar', size = '
   container.innerHTML = `
     <div class="modal-head">
       <div class="modal-title">${escapeHtml(title)}</div>
-      <button class="modal-close" onclick="closeModal()"><i data-lucide="x"></i></button>
+      <button class="modal-close" onclick="closeModal()" title="Fechar" aria-label="Fechar janela"><i data-lucide="x"></i></button>
     </div>
     <div class="modal-body">${body}</div>
     <div class="modal-footer">
@@ -8212,7 +8341,7 @@ function openModal({ title, body, actions, size = '' }) {
   container.innerHTML = `
     <div class="modal-head">
       <div class="modal-title">${escapeHtml(title)}</div>
-      <button class="modal-close" onclick="closeModal()"><i data-lucide="x"></i></button>
+      <button class="modal-close" onclick="closeModal()" title="Fechar" aria-label="Fechar janela"><i data-lucide="x"></i></button>
     </div>
     <div class="modal-body">${body}</div>
     <div class="modal-footer">${actions || ''}</div>
@@ -8258,18 +8387,25 @@ function openCmdK() {
 function closeCmdK() { document.getElementById('cmdkOverlay').classList.remove('active'); }
 function renderCmdK(q) {
   const ql = q.toLowerCase();
+  // Comandos das telas reais do sistema (as rotas antigas Dashboard/Compras/
+  // Solicitações não estão no menu e nasciam vazias)
   const commands = [
-    { icon:'layout-dashboard', label:'Ir para Dashboard', sub:'Visão geral', action:()=>{closeCmdK();navigate('dashboard')} },
-    { icon:'shopping-cart', label:'Ir para Compras', sub:'Gestão de compras', action:()=>{closeCmdK();navigate('compras')} },
-    { icon:'file-text', label:'Ir para Solicitações', sub:'Solicitações em andamento', action:()=>{closeCmdK();navigate('solicitacoes')} },
-    { icon:'upload-cloud', label:'Importar planilha', sub:'Excel, CSV, PDF', action:()=>{closeCmdK();navigate('importar')} },
+    { icon:'inbox', label:'Pedidos das lojas', sub:'Aprovar e acompanhar pedidos', action:()=>{closeCmdK();navigate('pedidos-colab')} },
+    { icon:'store', label:'Lojas', sub:'Grade de itens por loja', action:()=>{closeCmdK();navigate('lojas')} },
+    { icon:'key-round', label:'Acessos das lojas', sub:'Senhas e cadastros', action:()=>{closeCmdK();navigate('acessos')} },
+    { icon:'users', label:'Usuários', sub:'Contas da gestão', action:()=>{closeCmdK();navigate('usuarios')} },
+    { icon:'settings', label:'Configurações', sub:'Preferências do sistema', action:()=>{closeCmdK();navigate('configuracoes')} },
     { icon:'history', label:'Histórico', sub:'Timeline completa', action:()=>{closeCmdK();navigate('historico')} },
-    { icon:'plus', label:'Nova compra', sub:'Cadastrar compra', action:()=>{closeCmdK();openPurchaseModal()} },
-    { icon:'plus', label:'Nova solicitação', sub:'Cadastrar solicitação', action:()=>{closeCmdK();openRequestModal()} },
-    { icon:'download', label:'Exportar compras (Excel)', sub:'.xlsx', action:()=>{closeCmdK();exportPurchasesXLSX()} },
+    { icon:'download', label:'Exportar pedidos (Excel)', sub:'.xlsx', action:()=>{closeCmdK();exportPedidosXLSX()} },
     { icon:'log-out', label:'Sair', sub:'Encerrar sessão', action:()=>{closeCmdK();logout()} },
   ];
-  const filtered = q ? commands.filter(c => c.label.toLowerCase().includes(ql) || c.sub.toLowerCase().includes(ql)) : commands;
+  // Busca direta em lojas e pedidos já carregados em memória
+  const extras = [];
+  if (ql) {
+    state.lojas.filter(l => (l.nome+' '+l.localidade).toLowerCase().includes(ql)).slice(0,4)
+      .forEach(l => extras.push({ icon:'store', label:l.nome, sub:`Abrir loja · ${l.localidade}`, action:()=>{closeCmdK();openLoja(l.id)} }));
+  }
+  const filtered = (q ? commands.filter(c => c.label.toLowerCase().includes(ql) || c.sub.toLowerCase().includes(ql)) : commands).concat(extras);
   document.getElementById('cmdkList').innerHTML = filtered.map((c,i) => `
     <div class="cmdk-result ${i===0?'sel':''}" data-i="${i}">
       <div class="ic"><i data-lucide="${c.icon}"></i></div>
@@ -8283,6 +8419,17 @@ function renderCmdK(q) {
   });
   // Stash atual
   state._cmdkFiltered = filtered;
+  state._cmdkIdx = 0;
+}
+
+function cmdkMove(delta){
+  const f = state._cmdkFiltered || [];
+  if (!f.length) return;
+  state._cmdkIdx = Math.max(0, Math.min(f.length - 1, (state._cmdkIdx||0) + delta));
+  document.querySelectorAll('.cmdk-result').forEach((el,i) => {
+    el.classList.toggle('sel', i === state._cmdkIdx);
+    if (i === state._cmdkIdx) el.scrollIntoView({ block:'nearest' });
+  });
 }
 
 /* ----------------------------------------------------------------
@@ -8310,17 +8457,21 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('cmdkInput').addEventListener('input', e => renderCmdK(e.target.value));
   document.getElementById('cmdkInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
+    if (e.key === 'ArrowDown') { e.preventDefault(); cmdkMove(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); cmdkMove(-1); }
+    else if (e.key === 'Enter') {
       const f = state._cmdkFiltered;
-      if (f && f.length) f[0].action();
+      if (f && f.length) f[Math.min(state._cmdkIdx||0, f.length-1)].action();
     }
   });
   document.getElementById('cmdkOverlay').addEventListener('click', e => {
     if (e.target.id === 'cmdkOverlay') closeCmdK();
   });
 
-  // Global search
-  document.getElementById('globalSearch').addEventListener('focus', () => openCmdK());
+  // Global search — mesmo guarda de papel do atalho ⌘K
+  document.getElementById('globalSearch').addEventListener('focus', () => {
+    if (state.user && state.user.role !== 'Colaborador') openCmdK();
+  });
 
   // Init
   initAuth().then(() => lucide.createIcons());
