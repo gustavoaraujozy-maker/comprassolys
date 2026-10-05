@@ -3503,7 +3503,7 @@ const Cloud = {
         codigo: loja.codigo, nome: loja.nome, localidade: loja.localidade,
         endereco: '',
         acessoId: (loja.codigo||'XXX').slice(0,3).toUpperCase() + Math.floor(1000+Math.random()*9000),
-        senha: SENHA_PADRAO_LOJA, solicitanteNome: '', cadastrado: false,
+        senha: SENHA_PADRAO_LOJA, solicitanteNome: '', cadastrado: true,
         criadoEm: new Date().toISOString(),
         itens: loja.itens.map(it => ({
           id: uid(), descricao: it.descricao,
@@ -4255,12 +4255,7 @@ async function loginLoja(lojaId){
     Object.assign(loja, fresh);
   }
 
-  // Se loja ainda não cadastrou: abre modal de cadastro (continua logada na Auth)
-  if (!loja.cadastrado) {
-    abrirCadastroPrimeiroAcesso(lojaId);
-    return;
-  }
-
+  // Acesso direto: loja + senha padrão, sem cadastro de primeiro acesso
   state.user = pseudoUserLoja(loja);
   await Storage.set('solys:session', { tipo:'loja', lojaId: loja.id, at: new Date().toISOString() });
   await pushLog('login', `Entrada pela loja ${loja.nome} (${loja.solicitanteNome||'?'})`, { loja: loja.nome });
@@ -6199,7 +6194,7 @@ async function saveNewLoja() {
     id: codigo, codigo,
     nome, localidade: local || '—', endereco: '',
     acessoId: codigo.slice(0,3).toUpperCase() + Math.floor(1000+Math.random()*9000),
-    senha: SENHA_PADRAO_LOJA, solicitanteNome: '', cadastrado: false,
+    senha: SENHA_PADRAO_LOJA, solicitanteNome: '', cadastrado: true,
     criadoEm: new Date().toISOString(),
     itens: [],
   };
@@ -7919,13 +7914,11 @@ function openUserModal() {
 function renderAcessos(){
   const c = document.getElementById('content');
   state._mostrarSenhas = state._mostrarSenhas || {};
-  const cadastradas = state.lojas.filter(l => l.cadastrado).length;
-  const pendentes = state.lojas.length - cadastradas;
   c.innerHTML = `
     <div class="page-header">
       <div>
         <h1 class="page-title">Acessos das lojas</h1>
-        <p class="page-sub">${cadastradas} cadastrada(s) · ${pendentes} aguardando 1º acesso · senha padrão <code class="mono" style="color:var(--gold-300)">Sgroup@2026#</code></p>
+        <p class="page-sub">${state.lojas.length} loja(s) · cada uma entra direto com a senha padrão <code class="mono" style="color:var(--gold-300)">Sgroup@2026#</code></p>
       </div>
       <div class="page-actions">
         <input id="acessosSearch" placeholder="Buscar loja..." oninput="filtrarAcessos(this.value)"
@@ -7995,10 +7988,9 @@ function renderAcessos(){
         </div>
       </div>
       <ol style="padding-left:20px;font-size:13px;line-height:1.85;color:var(--ink-200)">
-        <li>Cada loja começa com a senha padrão <code class="mono">Sgroup@2026#</code>.</li>
-        <li>No <b style="color:var(--gold-300)">primeiro acesso</b>, a pessoa informa seu nome e cria uma nova senha — esse nome passa a ser o <b>solicitante</b> de todos os pedidos da loja.</li>
-        <li>A partir daí, só a nova senha funciona.</li>
-        <li>Se precisar trocar de pessoa, clique em <b>"Resetar cadastro"</b> — a senha volta ao padrão e a próxima pessoa faz o novo cadastro.</li>
+        <li>Na tela de login, a pessoa escolhe a loja e digita a senha <code class="mono">Sgroup@2026#</code> — entra direto, sem cadastro.</li>
+        <li>O nome de quem pede é informado no próprio pedido (campo <b>Solicitante</b>).</li>
+        <li>Se trocar a senha de uma loja em <b>"Editar acesso"</b>, use <b>"Resetar senha"</b> para voltar ao padrão.</li>
       </ol>
     </div>
   `;
