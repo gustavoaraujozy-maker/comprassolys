@@ -7244,7 +7244,6 @@ function baixarPedidoWord(id){
   const lojaAtual = state.lojas.find(l => l.id === p.lojaId);
   const enderecoCompleto = (p.endereco || lojaAtual?.endereco || p.lojaLocal || '—');
   const anexos = p.anexos || [];
-  const historico = (p.historico || []);
 
   const NAVY = PDF_NAVY, GOLD = PDF_GOLD, DARK = PDF_DARK, MUTED = PDF_MUTED, LIGHT = PDF_LIGHT, GREY = PDF_GREY;
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
@@ -7417,25 +7416,7 @@ function baixarPedidoWord(id){
     y += 7;
   }
 
-  // === HISTÓRICO COMPLETO DE TRAMITAÇÃO ===
-  if (historico.length) {
-    drawSection('Histórico de Tramitação');
-    doc.autoTable({
-      startY: y,
-      margin: { left: M, right: M, top: 18, bottom: 22 },
-      head: [['Quando', 'Por', 'Ação']],
-      body: historico.slice().reverse().map(h => [
-        fmt.datetime(h.at), h.by || '—',
-        // Helvetica do jsPDF não tem o glifo "→"
-        String(h.action || '—').replace(/→/g, '»'),
-      ]),
-      styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 2.5, textColor: DARK, lineColor: GREY, lineWidth: 0.1 },
-      headStyles: { fillColor: LIGHT, textColor: NAVY, fontStyle: 'bold', fontSize: 8 },
-      columnStyles: { 0: { cellWidth: 40, textColor: MUTED }, 1: { cellWidth: 40 } },
-      alternateRowStyles: { fillColor: [249, 250, 252] },
-    });
-    y = doc.lastAutoTable.finalY + 6;
-  }
+  // Histórico de tramitação fica só no sistema (não vai para o PDF)
 
   // === ASSINATURAS ===
   let signY = H - 40;
