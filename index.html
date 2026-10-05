@@ -3319,6 +3319,7 @@ input[type=password], input[type=email], input[type=search]{
       <div class="nav-section" data-roles="Administrador,Diretoria">
         <div class="nav-label">Pedidos</div>
         <button class="nav-item active" data-route="pedidos-colab" data-roles="Administrador,Diretoria"><i data-lucide="inbox"></i><span>Pedidos das lojas</span><span class="badge badge-alert badge-pulse" id="badgeColab">0</span></button>
+        <button class="nav-item" data-route="minha-lista" data-roles="Administrador,Diretoria"><i data-lucide="shopping-cart"></i><span>Fazer pedido</span></button>
         <button class="nav-item" data-route="lojas" data-roles="Administrador,Diretoria"><i data-lucide="store"></i><span>Lojas</span><span class="badge" id="badgeLojas">0</span></button>
         <button class="nav-item" data-route="acessos" data-roles="Administrador,Diretoria"><i data-lucide="key-round"></i><span>Acessos</span></button>
       </div>
@@ -6407,7 +6408,7 @@ function renderMinhaLista() {
       </button>`
     ).join('');
     c.innerHTML = `
-      <div class="page-header"><div><h1 class="page-title">Selecione sua loja</h1><p class="page-sub">Não conseguimos vincular sua sessão a uma loja — escolha abaixo</p></div></div>
+      <div class="page-header"><div><h1 class="page-title">Selecione a loja</h1><p class="page-sub">Escolha para qual loja o pedido será feito</p></div></div>
       <div class="panel" style="max-width:480px">
         ${opcoes || '<div class="empty-state"><i data-lucide="store"></i><p>Nenhuma loja cadastrada.</p></div>'}
       </div>`;
@@ -7271,23 +7272,31 @@ function baixarPedidoWord(id){
   }
   y += 4;
 
-  // === RELAÇÃO DE PRODUTOS ===
-  drawSection('Relação de Produtos');
+  // === RELAÇÃO DE PRODUTOS === (biscoitos/bolachas vão para "Variedades")
+  const ehVariedade = it => /biscoit|bolach/i.test(String(it.descricao||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+  const grupos = [
+    ['Relação de Produtos', p.itens.filter(it => !ehVariedade(it))],
+    ['Variedades',          p.itens.filter(ehVariedade)],
+  ].filter(([, lista]) => lista.length);
+  let nItem = 0;
+  for (const [titulo, lista] of grupos) {
+  const subUn = lista.reduce((s,i)=>s+(i.quantidade||0),0);
+  drawSection(titulo);
   doc.autoTable({
     startY: y,
     margin: { left: M, right: M, top: 18, bottom: 22 },
     head: [['Item', 'Qtd.', 'Un.', 'Descrição do Produto']],
-    body: p.itens.map((it, i) => [
-      String(i + 1).padStart(2, '0'),
+    body: lista.map(it => [
+      String(++nItem).padStart(2, '0'),
       String(it.quantidade),
       it.unidade || 'un',
       it.descricao,
     ]),
     foot: [[
       '',
-      { content: String(totalUn), styles: { halign: 'center', textColor: GOLD, fontStyle: 'bold' } },
+      { content: String(subUn), styles: { halign: 'center', textColor: GOLD, fontStyle: 'bold' } },
       '',
-      { content: `Total de unidades · ${p.itens.length} produto${p.itens.length > 1 ? 's' : ''}`,
+      { content: `Total de unidades · ${lista.length} produto${lista.length > 1 ? 's' : ''}`,
         styles: { fontStyle: 'bold', textColor: NAVY } },
     ]],
     styles: {
@@ -7308,6 +7317,7 @@ function baixarPedidoWord(id){
     alternateRowStyles: { fillColor: [249, 250, 252] },
   });
   y = doc.lastAutoTable.finalY + 6;
+  }
 
   // === OBSERVAÇÕES ===
   if (p.observacao) {
@@ -7521,6 +7531,13 @@ async function excluirPedido(id) {
   await pushLog('pedido-del', `Pedido de ${p.lojaNome} (${p.solicitante}) excluído`);
   toast('Pedido excluído','','info');
   updateBadges();
+  renderMinhaLista();
+  setTimeout(()=>lucide.createIcons(),50);
+}
+
+// Gestão escolhe para qual loja vai fazer o pedido
+async function entrarComoLoja(lojaId) {
+  await setLojaSelecionada(lojaId);
   renderMinhaLista();
   setTimeout(()=>lucide.createIcons(),50);
 }
