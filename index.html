@@ -3266,15 +3266,16 @@ input[type=password], input[type=email], input[type=search]{
     </div>
     <div class="login-card">
     <div class="login-title">Bem-vindo(a) 👋</div>
-    <p class="login-sub">Entre com o usuário da sua loja e a senha</p>
+    <p class="login-sub">Selecione sua loja e informe a senha</p>
 
     <div class="field">
       <label>Usuário</label>
       <div class="select-wrap">
         <i data-lucide="user"></i>
-        <input type="text" id="loginUsuario" placeholder="Ex: bezerra" autocomplete="username" autocapitalize="none" spellcheck="false" onkeydown="if(event.key==='Enter')document.getElementById('loginSenha').focus()" />
+        <select id="loginUsuario" onchange="document.getElementById('loginSenha').focus()">
+          <option value="">Selecione sua loja</option>
+        </select>
       </div>
-      <div class="login-hint-inline">Nome da loja sem "Loja" — ex: <b>bezerra</b>, <b>sede-ceara</b>. Diretoria: <b>diretoria</b></div>
     </div>
 
     <div class="field">
@@ -4188,7 +4189,14 @@ function showLogin() {
   // Pré-preenche o último usuário usado neste aparelho (só localStorage, sem custo)
   const usr = document.getElementById('loginUsuario');
   if (usr) {
-    try { usr.value = localStorage.getItem('solys:ultimoUsuario') || ''; } catch (e) {}
+    const ordenadas = [...(state.lojas||[])].sort((a,b)=>a.nome.localeCompare(b.nome));
+    usr.innerHTML = `<option value="">Selecione sua loja</option>` +
+      ordenadas.map(l => `<option value="${escapeHtml(l.id)}">${escapeHtml(l.nome)} — ${escapeHtml(l.localidade)}</option>`).join('') +
+      `<option value="diretoria">Diretoria</option>`;
+    try {
+      const ult = localStorage.getItem('solys:ultimoUsuario') || '';
+      if ([...usr.options].some(o => o.value === ult)) usr.value = ult;
+    } catch (e) {}
     setTimeout(()=>document.getElementById(usr.value ? 'loginSenha' : 'loginUsuario')?.focus(), 80);
   }
   // Limpa campos
@@ -4200,7 +4208,7 @@ function showLogin() {
 async function entrarLojaUnificado(){
   const usuario = normUsuario(document.getElementById('loginUsuario')?.value);
   const senha = document.getElementById('loginSenha')?.value || '';
-  if (!usuario) { toast('Atenção','Informe o usuário','warning'); return; }
+  if (!usuario) { toast('Atenção','Selecione sua loja','warning'); return; }
   if (!senha) { toast('Atenção','Informe a senha','warning'); return; }
   const lembrar = () => { try { localStorage.setItem('solys:ultimoUsuario', usuario); } catch (e) {} };
 
@@ -7996,8 +8004,8 @@ function renderAcessos(){
         </div>
       </div>
       <ol style="padding-left:20px;font-size:13px;line-height:1.85;color:var(--ink-200)">
-        <li>Na tela de login, o <b>usuário</b> é o nome da loja sem "Loja" (ex: <code class="mono">bezerra</code>, <code class="mono">sede-ceara</code>) e a senha é <code class="mono">Sgroup@2026#</code> — entra direto, sem cadastro.</li>
-        <li>A Diretoria entra com o usuário <code class="mono">diretoria</code> e a senha da gestão.</li>
+        <li>Na tela de login, a pessoa escolhe a loja na lista e digita a senha <code class="mono">Sgroup@2026#</code> — entra direto, sem cadastro.</li>
+        <li>A Diretoria escolhe <b>Diretoria</b> no fim da lista e usa a senha da gestão.</li>
         <li>O nome de quem pede é informado no próprio pedido (campo <b>Solicitante</b>).</li>
         <li>Se trocar a senha de uma loja em <b>"Editar acesso"</b>, use <b>"Resetar senha"</b> para voltar ao padrão.</li>
       </ol>
