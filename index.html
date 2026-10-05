@@ -3247,15 +3247,13 @@ input[type=password], input[type=email], input[type=search]{
     </div>
     <div class="login-card">
     <div class="login-title">Acesso à plataforma</div>
-    <p class="login-sub">Selecione sua loja e informe a senha</p>
+    <p class="login-sub">Informe seu usuário e senha</p>
 
     <div class="field">
-      <label>Loja</label>
+      <label>Usuário</label>
       <div class="select-wrap">
-        <i data-lucide="store"></i>
-        <select id="loginLojaSelect">
-          <option value="">Selecione sua loja</option>
-        </select>
+        <i data-lucide="user"></i>
+        <input type="text" id="loginUsuario" placeholder="Ex: bezerra" autocomplete="username" autocapitalize="none" spellcheck="false" onkeydown="if(event.key==='Enter')document.getElementById('loginSenha').focus()" />
       </div>
     </div>
 
@@ -3263,23 +3261,12 @@ input[type=password], input[type=email], input[type=search]{
       <label>Senha</label>
       <div class="select-wrap">
         <i data-lucide="lock"></i>
-        <input type="password" id="loginSenha" placeholder="Sua senha" autocomplete="off" onkeydown="if(event.key==='Enter')entrarLojaUnificado()" />
+        <input type="password" id="loginSenha" placeholder="Sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')entrarLojaUnificado()" />
         <button type="button" class="pwd-eye" onclick="togglePwd('loginSenha', this)" title="Mostrar/ocultar" aria-label="Mostrar ou ocultar senha"><i data-lucide="eye"></i></button>
       </div>
     </div>
 
     <button class="btn-primary" id="btnEntrarLoja" onclick="entrarLojaUnificado()">Entrar</button>
-
-    <div class="login-admin-toggle">
-      <button class="link-btn" onclick="toggleAdminLogin()">Acesso da gestão</button>
-    </div>
-
-    <div id="adminLoginBox" class="admin-login-box hidden">
-      <input type="password" id="adminPass" placeholder="Senha da diretoria" onkeydown="if(event.key==='Enter')entrarComoGestao('Diretoria')" />
-      <button class="btn gold" style="width:100%;margin-top:10px" onclick="entrarComoGestao('Diretoria')">
-        <i data-lucide="shield" style="width:14px;height:14px;display:inline-block;vertical-align:-2px;margin-right:6px"></i>
-        Entrar como Diretoria
-      </button>
     </div>
     </div>
   </div>
@@ -4175,20 +4162,11 @@ function pseudoUserLoja(loja) {
 function showLogin() {
   document.getElementById('login').style.display = 'flex';
   document.getElementById('app').classList.remove('active');
-  // Popula o select com as lojas (ordem alfabética)
-  const sel = document.getElementById('loginLojaSelect');
-  if (sel && state.lojas) {
-    const ordenadas = [...state.lojas].sort((a,b)=>a.nome.localeCompare(b.nome));
-    sel.innerHTML = `<option value="">Selecione sua loja</option>` +
-      ordenadas.map(l => `<option value="${l.id}">${escapeHtml(l.nome)} — ${escapeHtml(l.localidade)}</option>`).join('');
-    // Pré-seleciona a última loja usada neste aparelho (só localStorage, sem custo)
-    try {
-      const ultima = localStorage.getItem('solys:ultimaLoja');
-      if (ultima && state.lojas.some(l => l.id === ultima)) {
-        sel.value = ultima;
-        setTimeout(()=>document.getElementById('loginSenha')?.focus(), 80);
-      }
-    } catch (e) {}
+  // Pré-preenche o último usuário usado neste aparelho (só localStorage, sem custo)
+  const usr = document.getElementById('loginUsuario');
+  if (usr) {
+    try { usr.value = localStorage.getItem('solys:ultimoUsuario') || ''; } catch (e) {}
+    setTimeout(()=>document.getElementById(usr.value ? 'loginSenha' : 'loginUsuario')?.focus(), 80);
   }
   // Limpa campos
   const senhaInp = document.getElementById('loginSenha');
@@ -4197,10 +4175,24 @@ function showLogin() {
 }
 
 async function entrarLojaUnificado(){
-  const lojaId = document.getElementById('loginLojaSelect')?.value;
-  if (!lojaId) { toast('Atenção','Selecione sua loja','warning'); return; }
-  // Coloca o valor no input lpw-<lojaId> esperado por loginLoja (compat)
+  const usuario = normUsuario(document.getElementById('loginUsuario')?.value);
   const senha = document.getElementById('loginSenha')?.value || '';
+  if (!usuario) { toast('Atenção','Informe o usuário','warning'); return; }
+  if (!senha) { toast('Atenção','Informe a senha','warning'); return; }
+  const lembrar = () => { try { localStorage.setItem('solys:ultimoUsuario', usuario); } catch (e) {} };
+
+  // Diretoria/Administrador entram pelo mesmo formulário
+  if (['diretoria','admin','administrador','gestao'].includes(usuario)) {
+    lembrar();
+    await entrarComoGestao('Diretoria', senha);
+    return;
+  }
+  // Loja: aceita o código (ex: bezerra), o nome sem "loja" ou o ID de acesso
+  const loja = state.lojas.find(l => l.id === usuario || normUsuario(l.codigo) === usuario
+    || normUsuario(l.nome) === usuario || normUsuario(l.acessoId) === usuario);
+  if (!loja) { toast('Acesso negado','Usuário não encontrado','error'); return; }
+  const lojaId = loja.id;
+  lembrar();
   const btn = document.getElementById('btnEntrarLoja');
   if (btn?.disabled) return;
   if (btn) { btn.disabled = true; btn.textContent = 'Entrando...'; }
@@ -4218,6 +4210,12 @@ async function entrarLojaUnificado(){
     shadow.remove();
     if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
   }
+}
+
+// "Loja Sede Ceará" -> "sede-ceara"
+function normUsuario(v){
+  return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()
+    .replace(/^loja\s+/,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 }
 
 function togglePwd(inputId, btn){
@@ -4345,25 +4343,7 @@ async function concluirCadastroLoja(lojaId){
   enterApp();
 }
 
-function toggleAdminLogin() {
-  const box = document.getElementById('adminLoginBox');
-  box.classList.toggle('hidden');
-  if (!box.classList.contains('hidden')) {
-    setTimeout(()=>document.getElementById('adminPass').focus(), 50);
-  }
-}
-
-async function entrarComoLoja(lojaId) {
-  const loja = state.lojas.find(l => l.id === lojaId);
-  if (!loja) { toast('Erro','Loja não encontrada','error'); return; }
-  state.user = pseudoUserLoja(loja);
-  await Storage.set('solys:session', { tipo:'loja', lojaId: loja.id, at: new Date().toISOString() });
-  await pushLog('login', `Entrada pela loja ${loja.nome}`, { loja: loja.nome });
-  enterApp();
-}
-
-async function entrarComoGestao(role) {
-  const pass = document.getElementById('adminPass').value;
+async function entrarComoGestao(role, pass) {
   // Autentica via Firestore (contas de gestão)
   const { data, error, conta } = await Cloud.signInDiretoria(pass);
   if (error || !data?.session) {
@@ -7988,7 +7968,8 @@ function renderAcessos(){
         </div>
       </div>
       <ol style="padding-left:20px;font-size:13px;line-height:1.85;color:var(--ink-200)">
-        <li>Na tela de login, a pessoa escolhe a loja e digita a senha <code class="mono">Sgroup@2026#</code> — entra direto, sem cadastro.</li>
+        <li>Na tela de login, o <b>usuário</b> é o nome da loja sem "Loja" (ex: <code class="mono">bezerra</code>, <code class="mono">sede-ceara</code>) e a senha é <code class="mono">Sgroup@2026#</code> — entra direto, sem cadastro.</li>
+        <li>A Diretoria entra com o usuário <code class="mono">diretoria</code> e a senha da gestão.</li>
         <li>O nome de quem pede é informado no próprio pedido (campo <b>Solicitante</b>).</li>
         <li>Se trocar a senha de uma loja em <b>"Editar acesso"</b>, use <b>"Resetar senha"</b> para voltar ao padrão.</li>
       </ol>
