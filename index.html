@@ -3501,6 +3501,7 @@ const Cloud = {
     return {
       id: p.id, lojaId: p.lojaId, lojaNome: p.lojaNome, lojaLocal: p.lojaLocal,
       data: p.data, solicitante: String(p.solicitante||'').toUpperCase(), observacao: p.observacao,
+      endereco: p.endereco || '',
       anexos: p.anexos || [],
       itens: (p.itens || []).map(it => ({ ...it,
         descricao: String(it.descricao||'').toUpperCase(),
@@ -3641,6 +3642,7 @@ const Cloud = {
       const doc = {
         lojaId: p.lojaId, lojaNome: p.lojaNome, lojaLocal: p.lojaLocal,
         data: p.data, solicitante: p.solicitante, observacao: p.observacao || '',
+        endereco: p.endereco || '',
         anexos: this._clean(p.anexos || []), itens: this._clean(p.itens || []),
         historico: this._clean(p.historico || []),
         status: p.status || 'Pendente', respondidoPor: '', respostaAdmin: '',
@@ -3652,7 +3654,7 @@ const Cloud = {
   },
   async updatePedido(id, patch) {
     if (!this.ok()) return false;
-    const allow = ['status','respondidoPor','respostaAdmin','historico','itens','observacao','solicitante','data','anexos'];
+    const allow = ['status','respondidoPor','respostaAdmin','historico','itens','observacao','solicitante','data','anexos','endereco'];
     const row = {};
     Object.keys(patch).forEach(k => { if (allow.includes(k)) row[k] = this._clean(patch[k]); });
     try { await db.collection('pedidos').doc(id).update(row); return true; }
@@ -6773,6 +6775,11 @@ function abrirNovoPedido(editId) {
           <input type="text" id="pedSolic" class="fld" placeholder="Seu nome" value="${editando ? escapeHtml(editando.solicitante) : escapeHtml(state.user?.solicitante || '')}" />
         </div>
       </div>
+      <div style="margin-top:12px">
+        <label class="fld-label">Endereço da loja <span class="muted" style="font-weight:400">(sai no PDF do pedido)</span></label>
+        <input type="text" id="pedEndereco" class="fld" placeholder="Ex: Av. Bezerra de Menezes, 1234 — Bairro, Fortaleza/CE"
+          value="${escapeHtml((editando && editando.endereco) || loja.endereco || '')}" />
+      </div>
 
       <div style="margin-top:20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -6903,6 +6910,7 @@ async function salvarPedido(editId) {
   const mesIdx = parseInt(document.getElementById('pedMes')?.value);
   const solic = document.getElementById('pedSolic').value.trim().toUpperCase();
   const obs = document.getElementById('pedObs').value.trim();
+  const endereco = (document.getElementById('pedEndereco')?.value || '').trim();
   // Só entram itens com quantidade > 0
   const itens = state._pedidoItens
     .filter(it => it.descricao.trim() && (it.quantidade|0) > 0)
@@ -6922,20 +6930,24 @@ async function salvarPedido(editId) {
   const lojaId = getLojaSelecionada();
   const loja = state.lojas.find(l => l.id === lojaId);
   const anexos = state._pedidoAnexos || [];
+  if (loja && endereco && endereco !== (loja.endereco || '')) {
+    loja.endereco = endereco;
+    if (Cloud.ok()) await Cloud.atualizarEnderecoLoja(loja.id, endereco);
+  }
 
   if (editId) {
     const p = state.pedidos.find(x => x.id === editId);
     if (!p || p.status !== 'Pendente') { toast('Não é possível editar','Pedido já processado','warning'); return; }
-    Object.assign(p, { data, solicitante:solic, itens, observacao:obs, anexos });
+    Object.assign(p, { data, solicitante:solic, itens, observacao:obs, anexos, endereco });
     p.historico = p.historico || [];
     p.historico.push({ at:new Date().toISOString(), by:solic, action:'editado' });
-    if (Cloud.ok()) await Cloud.updatePedido(p.id, { data, solicitante:solic, itens, observacao:obs, anexos, historico:p.historico });
+    if (Cloud.ok()) await Cloud.updatePedido(p.id, { data, solicitante:solic, itens, observacao:obs, anexos, endereco, historico:p.historico });
     await pushLog('pedido-edit', `Pedido de ${loja.nome} editado por ${solic}`, { itens: itens.length });
     toast('Pedido atualizado','', 'success');
   } else {
     const rascunho = {
       lojaId, lojaNome: loja.nome, lojaLocal: loja.localidade,
-      data, solicitante: solic, itens, observacao: obs, anexos,
+      data, solicitante: solic, itens, observacao: obs, anexos, endereco,
       status: 'Pendente',
       criadoEm: new Date().toISOString(),
       historico: [{ at:new Date().toISOString(), by:solic, action:'criado' }],
@@ -7217,7 +7229,7 @@ function baixarPedidoWord(id){
   const dataEmissao = new Date(p.criadoEm).toLocaleDateString('pt-BR');
   const horaEmissao = new Date(p.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   const lojaAtual = state.lojas.find(l => l.id === p.lojaId);
-  const enderecoCompleto = (lojaAtual?.endereco || p.lojaLocal || '—');
+  const enderecoCompleto = (p.endereco || lojaAtual?.endereco || p.lojaLocal || '—');
   const anexos = p.anexos || [];
   const historico = (p.historico || []);
 
