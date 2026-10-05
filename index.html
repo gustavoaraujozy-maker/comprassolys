@@ -7277,32 +7277,35 @@ function baixarPedidoWord(id){
     'Entregue':  [15, 118, 110],
     'Rejeitado': [185, 28, 28],
   }[p.status] || DARK;
-  const info = [
-    ['Protocolo',           proto],
-    ['Unidade Solicitante', p.lojaNome || '—'],
-    ['Código da Unidade',   (lojaAtual?.codigo || p.lojaId || '—').toString().toUpperCase()],
-    ['Localidade',          lojaAtual?.localidade || p.lojaLocal || '—'],
-    ['Endereço',            enderecoCompleto],
-    ['Solicitante',         p.solicitante || '—'],
-    ['Mês de Referência',   `${mes} de ${ano}`],
-    ['Data de Emissão',     `${dataEmissao} às ${horaEmissao}`],
-    ['Situação',            p.status || '—'],
-    ['Itens no Pedido',     `${p.itens.length} produto${p.itens.length > 1 ? 's' : ''} · ${totalUn} unidade${totalUn > 1 ? 's' : ''}`],
-    ['Anexos',              anexos.length ? `${anexos.length} arquivo${anexos.length > 1 ? 's' : ''}` : 'Nenhum'],
+  // Dados essenciais em 2 colunas (protocolo e emissão já estão no cabeçalho)
+  const temEndereco = !!(p.endereco || lojaAtual?.endereco);
+  const plural = (n, s) => `${n} ${s}${n === 1 ? '' : 's'}`;
+  const pares = [
+    [['Loja', p.lojaNome || '—'],            ['Mês de referência', `${mes} de ${ano}`]],
+    [['Solicitante', p.solicitante || '—'],  ['Situação', p.status || '—']],
+    [['Itens', `${plural(p.itens.length, 'produto')} · ${plural(totalUn, 'unidade')}`],
+     anexos.length ? ['Anexos', plural(anexos.length, 'arquivo')] : null],
   ];
-  doc.setFontSize(10);
-  for (const [k, v] of info) {
-    if (y > BOTTOM - 6) { doc.addPage(); y = 20; }
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...MUTED);
-    doc.text(`${k}:`, M, y);
-    doc.setFont('helvetica', k === 'Situação' ? 'bold' : 'normal');
+  const infoColW = (W - M*2) / 2;
+  const celula = (x, y0, k, v, largura) => {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...MUTED);
+    doc.text(k.toUpperCase(), x, y0);
+    doc.setFont('helvetica', k === 'Situação' ? 'bold' : 'normal'); doc.setFontSize(10.5);
     doc.setTextColor(...(k === 'Situação' ? statusCor : DARK));
-    const lines = doc.splitTextToSize(String(v), W - M - 60);
-    doc.text(lines, M + 50, y);
-    y += Math.max(5.5, lines.length * 5.5);
+    const lines = doc.splitTextToSize(String(v), largura - 4);
+    doc.text(lines, x, y0 + 5);
+    return 5 + lines.length * 5;
+  };
+  for (const [a, b] of pares) {
+    if (y > BOTTOM - 14) { doc.addPage(); y = 20; }
+    const hA = celula(M, y, a[0], a[1], infoColW);
+    const hB = b ? celula(M + infoColW, y, b[0], b[1], infoColW) : 0;
+    y += Math.max(hA, hB) + 4;
   }
-  y += 4;
+  // Endereço em linha inteira (sem endereço, mostra a localidade)
+  if (y > BOTTOM - 14) { doc.addPage(); y = 20; }
+  y += celula(M, y, temEndereco ? 'Endereço de entrega' : 'Localidade',
+    temEndereco ? enderecoCompleto : (lojaAtual?.localidade || p.lojaLocal || '—'), W - M*2) + 6;
 
   // === RELAÇÃO DE PRODUTOS === (biscoitos/bolachas vão para "Variedades")
   const ehVariedade = it => /biscoit|bolach|^\s*(cafe|acucar)\b/i.test(String(it.descricao||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''));
