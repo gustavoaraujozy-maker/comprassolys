@@ -3052,6 +3052,7 @@ table.data thead th{color:#374151 !important;font-weight:700 !important}
 table.data tbody td{color:#1F2937 !important}
 
 /* Itens do pedido */
+.ped-uni,.ped-desc,.eg-un,.eg-desc,#pedSolic,#egSolic{text-transform:uppercase}
 .ped-li, .ped-li span, .pedido-item-line, .ref-desc, .pd-it-desc,
 .colab-item-head strong, .colab-item-desc{
   color:#0A0F1A !important;
@@ -3499,8 +3500,12 @@ const Cloud = {
   _mapPedido(p) {
     return {
       id: p.id, lojaId: p.lojaId, lojaNome: p.lojaNome, lojaLocal: p.lojaLocal,
-      data: p.data, solicitante: p.solicitante, observacao: p.observacao,
-      anexos: p.anexos || [], itens: p.itens || [], historico: p.historico || [],
+      data: p.data, solicitante: String(p.solicitante||'').toUpperCase(), observacao: p.observacao,
+      anexos: p.anexos || [],
+      itens: (p.itens || []).map(it => ({ ...it,
+        descricao: String(it.descricao||'').toUpperCase(),
+        unidade: String(it.unidade||'UN').toUpperCase() })),
+      historico: p.historico || [],
       status: p.status, respondidoPor: p.respondidoPor || '', respostaAdmin: p.respostaAdmin || '',
       criadoEm: p.criadoEm,
     };
@@ -6320,7 +6325,7 @@ function historicoAnualLoja(loja){
     p.itens.forEach(it => {
       const k = (it.descricao||'').toUpperCase().trim();
       if (!k) return;
-      if (!out[ano][mes].itens[k]) out[ano][mes].itens[k] = { descricao:k, quantidade:0, unidade:it.unidade||'un' };
+      if (!out[ano][mes].itens[k]) out[ano][mes].itens[k] = { descricao:k, quantidade:0, unidade:it.unidade||'UN' };
       out[ano][mes].itens[k].quantidade += (it.quantidade|0);
     });
   });
@@ -6359,7 +6364,7 @@ function referenciaMesAnterior(loja) {
       itens: ultimo.itens.map(i => ({
         descricao: i.descricao,
         quantidade: i.quantidade||1,
-        unidade: i.unidade||'un'
+        unidade: i.unidade||'UN'
       }))
     };
   }
@@ -6592,7 +6597,7 @@ function abrirPedidoComBaseEmMes(lojaId, ano, mes){
   state._pedidoItensBase = itens.map(i => ({
     descricao: i.descricao,
     quantidade: i.quantidade||1,
-    unidade: i.unidade||'un'
+    unidade: i.unidade||'UN'
   }));
   state._mesPedidoBase = MESES.indexOf(mes);
   abrirNovoPedido();
@@ -6719,7 +6724,7 @@ function abrirNovoPedido(editId) {
     state._pedidoItens = state._pedidoItensBase.map(i => ({
       descricao: i.descricao,
       quantidade: i.quantidade|0,
-      unidade: i.unidade || 'un'
+      unidade: i.unidade || 'UN'
     }));
     state._pedidoItensBase = null;
   } else if (editando) {
@@ -6730,7 +6735,7 @@ function abrirNovoPedido(editId) {
       state._pedidoItens = ref.itens.map(i => ({
         descricao: i.descricao,
         quantidade: 0,
-        unidade: i.unidade || 'un'
+        unidade: i.unidade || 'UN'
       }));
     } else {
       state._pedidoItens = [{ descricao:'', quantidade:0, unidade:'un' }];
@@ -6833,7 +6838,7 @@ function renderLinhasPedido() {
   wrap.innerHTML = state._pedidoItens.map((it, i) => `
     <div class="ped-linha">
       <input type="number" min="0" inputmode="numeric" class="fld ped-qtd" value="${it.quantidade|0}" onchange="setLinhaPedido(${i},'quantidade',this.value)" onfocus="this.select()" onkeydown="navLinhaPedido(event,${i},'ped-qtd')" title="Quantidade" aria-label="Quantidade" />
-      <input type="text" class="fld ped-uni" value="${escapeHtml(it.unidade||'un')}" onchange="setLinhaPedido(${i},'unidade',this.value)" onkeydown="navLinhaPedido(event,${i},'ped-uni')" title="Unidade" aria-label="Unidade" />
+      <input type="text" class="fld ped-uni" value="${escapeHtml(it.unidade||'UN')}" onchange="setLinhaPedido(${i},'unidade',this.value)" onkeydown="navLinhaPedido(event,${i},'ped-uni')" title="Unidade" aria-label="Unidade" />
       <input type="text" class="fld ped-desc" list="sugProdutos" placeholder="Nome do produto" value="${escapeHtml(it.descricao)}" onchange="setLinhaPedido(${i},'descricao',this.value)" onkeydown="navLinhaPedido(event,${i},'ped-desc')" aria-label="Descrição do produto" />
       <button class="icon-btn danger" onclick="removerLinhaPedido(${i})" title="Remover" aria-label="Remover item" ${state._pedidoItens.length<=1?'style="visibility:hidden"':''}><i data-lucide="x"></i></button>
     </div>
@@ -6883,7 +6888,7 @@ function usarReferencia() {
   const ref = state._ultimaRef;
   if (!ref) return;
   abrirNovoPedido();
-  state._pedidoItens = ref.itens.map(i => ({ descricao:i.descricao, quantidade:i.quantidade, unidade:i.unidade||'un' }));
+  state._pedidoItens = ref.itens.map(i => ({ descricao:i.descricao, quantidade:i.quantidade, unidade:i.unidade||'UN' }));
   renderLinhasPedido();
   toast('Base carregada','Itens do mês anterior copiados','success');
 }
@@ -6896,12 +6901,12 @@ async function salvarPedido(editId) {
   if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.style.opacity = '.6'; }
   try {
   const mesIdx = parseInt(document.getElementById('pedMes')?.value);
-  const solic = document.getElementById('pedSolic').value.trim();
+  const solic = document.getElementById('pedSolic').value.trim().toUpperCase();
   const obs = document.getElementById('pedObs').value.trim();
   // Só entram itens com quantidade > 0
   const itens = state._pedidoItens
     .filter(it => it.descricao.trim() && (it.quantidade|0) > 0)
-    .map(it => ({ descricao: it.descricao.trim().toUpperCase(), quantidade: it.quantidade|0, unidade: (it.unidade||'un').trim() }));
+    .map(it => ({ descricao: it.descricao.trim().toUpperCase(), quantidade: it.quantidade|0, unidade: (it.unidade||'UN').trim().toUpperCase() }));
 
   if (!solic) { toast('Atenção','Informe quem está solicitando','warning'); return; }
   if (isNaN(mesIdx)) { toast('Atenção','Escolha o mês do pedido','warning'); return; }
@@ -6940,7 +6945,9 @@ async function salvarPedido(editId) {
       novo = await Cloud.insertPedido(rascunho);
     }
     if (!novo) { novo = { ...rascunho, id: uid() }; }
-    state.pedidos.unshift(novo);
+    // O onSnapshot pode ter inserido o pedido antes do await terminar: substitui em vez de duplicar
+    const jaTem = state.pedidos.findIndex(x => x.id === novo.id);
+    if (jaTem >= 0) state.pedidos[jaTem] = novo; else state.pedidos.unshift(novo);
     // HISTÓRICO: soma as quantidades na grade mensal da loja (mês do pedido)
     await somarPedidoNaGradeLoja(loja, itens, data);
     await pushLog('pedido-novo', `${loja.nome}: novo pedido de ${solic} (${itens.length} itens) · ${MES_NOME[mesIdx]}`, { data });
@@ -7067,7 +7074,7 @@ function renderLinhasEditGestao(){
   wrap.innerHTML = state._editGestaoBuf.map((it,i) => `
     <div class="eg-row">
       <input type="number" min="0" value="${it.quantidade|0}" oninput="setLinhaEditGestao(${i},'quantidade',this.value)" onfocus="this.select()" class="fld eg-qtd" />
-      <input type="text" value="${escapeHtml(it.unidade||'un')}" oninput="setLinhaEditGestao(${i},'unidade',this.value)" class="fld eg-un" />
+      <input type="text" value="${escapeHtml(it.unidade||'UN')}" oninput="setLinhaEditGestao(${i},'unidade',this.value)" class="fld eg-un" />
       <input type="text" value="${escapeHtml(it.descricao)}" oninput="setLinhaEditGestao(${i},'descricao',this.value)" class="fld eg-desc" />
       <button class="icon-btn danger" onclick="removerLinhaEditGestao(${i})" title="Remover"><i data-lucide="x"></i></button>
     </div>
@@ -7090,12 +7097,12 @@ function removerLinhaEditGestao(i){
 async function salvarEdicaoGestao(id){
   const p = state.pedidos.find(x => x.id === id);
   if (!p) return;
-  const solic = document.getElementById('egSolic').value.trim();
+  const solic = document.getElementById('egSolic').value.trim().toUpperCase();
   const mesIdx = parseInt(document.getElementById('egMes').value);
   const obs = document.getElementById('egObs').value.trim();
   const itens = state._editGestaoBuf
     .filter(i => (i.descricao||'').trim() && (i.quantidade|0) > 0)
-    .map(i => ({ descricao:i.descricao.trim().toUpperCase(), quantidade:i.quantidade|0, unidade:(i.unidade||'un').trim() }));
+    .map(i => ({ descricao:i.descricao.trim().toUpperCase(), quantidade:i.quantidade|0, unidade:(i.unidade||'UN').trim().toUpperCase() }));
   if (!itens.length) { toast('Atenção','Pelo menos um item com quantidade','warning'); return; }
   const ano = isoToAno(p.data);
   const data = `${ano}-${String(mesIdx+1).padStart(2,'0')}-01`;
@@ -7273,7 +7280,7 @@ function baixarPedidoWord(id){
   y += 4;
 
   // === RELAÇÃO DE PRODUTOS === (biscoitos/bolachas vão para "Variedades")
-  const ehVariedade = it => /biscoit|bolach/i.test(String(it.descricao||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+  const ehVariedade = it => /biscoit|bolach|^\s*(cafe|acucar)\b/i.test(String(it.descricao||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''));
   const grupos = [
     ['Relação de Produtos', p.itens.filter(it => !ehVariedade(it))],
     ['Variedades',          p.itens.filter(ehVariedade)],
@@ -7289,7 +7296,7 @@ function baixarPedidoWord(id){
     body: lista.map(it => [
       String(++nItem).padStart(2, '0'),
       String(it.quantidade),
-      it.unidade || 'un',
+      it.unidade || 'UN',
       it.descricao,
     ]),
     foot: [[
@@ -7311,7 +7318,7 @@ function baixarPedidoWord(id){
     columnStyles: {
       0: { halign: 'center', cellWidth: 14, textColor: MUTED },
       1: { halign: 'center', cellWidth: 16, fontStyle: 'bold' },
-      2: { halign: 'center', cellWidth: 14, textColor: MUTED },
+      2: { halign: 'center', cellWidth: 20, textColor: MUTED },
       3: { halign: 'left' },
     },
     alternateRowStyles: { fillColor: [249, 250, 252] },
@@ -7466,7 +7473,7 @@ async function abrirDetalhePedido(id){
         <div class="pd-itens-head"><div>Qtd</div><div>Un</div><div>Descrição</div></div>
         ${p.itens.map((it,i)=>`<div class="pd-item-row">
           <div class="pd-it-qtd">${it.quantidade}</div>
-          <div class="pd-it-un">${escapeHtml(it.unidade||'un')}</div>
+          <div class="pd-it-un">${escapeHtml(it.unidade||'UN')}</div>
           <div class="pd-it-desc">${escapeHtml(it.descricao)}</div>
         </div>`).join('')}
       </div>
@@ -7749,7 +7756,7 @@ async function exportPedidosXLSX() {
   const rows = [['DATA','LOJA','LOCALIDADE','SOLICITANTE','PRODUTO','QTD','UN','STATUS','OBSERVAÇÃO','RESPOSTA']];
   state.pedidos.forEach(p => {
     p.itens.forEach(it => {
-      rows.push([fmt.date(p.data), p.lojaNome, p.lojaLocal, p.solicitante, it.descricao, it.quantidade, it.unidade||'un', p.status, p.observacao||'', p.respostaAdmin||'']);
+      rows.push([fmt.date(p.data), p.lojaNome, p.lojaLocal, p.solicitante, it.descricao, it.quantidade, it.unidade||'UN', p.status, p.observacao||'', p.respostaAdmin||'']);
     });
   });
   const ws = XLSX.utils.aoa_to_sheet(rows);
