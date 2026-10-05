@@ -7056,6 +7056,11 @@ function editarPedidoGestao(id){
           </select>
         </div>
       </div>
+      <div style="margin-bottom:14px">
+        <label class="fld-label">Endereço da loja <span class="muted" style="font-weight:400">(sai no PDF do pedido)</span></label>
+        <input type="text" id="egEndereco" class="fld" placeholder="Ex: Av. Bezerra de Menezes, 1234 — Bairro, Fortaleza/CE"
+          value="${escapeHtml(p.endereco || state.lojas.find(l => l.id === p.lojaId)?.endereco || '')}" />
+      </div>
 
       <div class="eg-head">
         <div class="eg-th eg-th-qtd">Qtd</div>
@@ -7112,6 +7117,7 @@ async function salvarEdicaoGestao(id){
   const solic = document.getElementById('egSolic').value.trim().toUpperCase();
   const mesIdx = parseInt(document.getElementById('egMes').value);
   const obs = document.getElementById('egObs').value.trim();
+  const endereco = (document.getElementById('egEndereco')?.value || '').trim();
   const itens = state._editGestaoBuf
     .filter(i => (i.descricao||'').trim() && (i.quantidade|0) > 0)
     .map(i => ({ descricao:i.descricao.trim().toUpperCase(), quantidade:i.quantidade|0, unidade:(i.unidade||'UN').trim().toUpperCase() }));
@@ -7123,9 +7129,16 @@ async function salvarEdicaoGestao(id){
   p.observacao = obs;
   p.itens = itens;
   p.data = data;
+  p.endereco = endereco;
+  // Lembra o endereço na loja para os próximos pedidos (1 escrita, só se mudou)
+  const lojaDoPedido = state.lojas.find(l => l.id === p.lojaId);
+  if (lojaDoPedido && endereco && endereco !== (lojaDoPedido.endereco || '')) {
+    lojaDoPedido.endereco = endereco;
+    if (Cloud.ok()) await Cloud.atualizarEnderecoLoja(lojaDoPedido.id, endereco);
+  }
   p.historico = p.historico || [];
   p.historico.push({ at:new Date().toISOString(), by:state.user.name, action:'editado pela diretoria' });
-  if (Cloud.ok()) await Cloud.updatePedido(id, { solicitante:solic, observacao:obs, itens, data, historico:p.historico });
+  if (Cloud.ok()) await Cloud.updatePedido(id, { solicitante:solic, observacao:obs, itens, data, endereco, historico:p.historico });
   await Storage.set('solys:pedidos', state.pedidos);
   await pushLog('pedido-edit-gestao', `${state.user.name} editou pedido de ${p.lojaNome}`);
   closeModal();
