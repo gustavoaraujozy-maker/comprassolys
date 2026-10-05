@@ -3552,6 +3552,18 @@ const Cloud = {
     try { await db.collection('lojas').doc(lojaId).update({ endereco }); return true; }
     catch (e) { toast('Erro ao salvar endereço', e.message, 'error'); return false; }
   },
+  // Cria/exclui 1 doc por ação. Excluir NÃO apaga os pedidos da loja (o histórico fica nos relatórios).
+  async criarLoja(loja){
+    if (!this.ok()) return false;
+    const { id, ...doc } = loja;
+    try { await db.collection('lojas').doc(id).set(this._clean(doc)); return true; }
+    catch (e) { toast('Erro ao criar loja', e.message, 'error'); return false; }
+  },
+  async excluirLoja(lojaId){
+    if (!this.ok()) return false;
+    try { await db.collection('lojas').doc(lojaId).delete(); return true; }
+    catch (e) { toast('Erro ao excluir loja', e.message, 'error'); return false; }
+  },
   async resetarCadastroLoja(lojaId){
     if (!this.ok()) return false;
     try {
@@ -5864,6 +5876,7 @@ function renderLojas() {
                 <div class="loja-local"><i data-lucide="map-pin" style="width:11px;height:11px;display:inline-block;vertical-align:-1px"></i> ${escapeHtml(l.localidade)}</div>
                 <div class="muted" style="font-size:11px;margin-top:4px">${(l.itens||[]).length} itens · <b style="color:var(--gold-400)">${lojaTotalMes(l, mesNow)}</b> un. no mês · ${lojaTotalAno(l)} no ano</div>
               </div>
+              <button class="btn ghost" onclick="event.stopPropagation();excluirLoja('${l.id}')" title="Excluir loja" aria-label="Excluir loja" style="padding:6px"><i data-lucide="trash-2"></i></button>
               <i data-lucide="chevron-right" class="loja-arrow"></i>
             </div>
           </div>`).join('')}
@@ -5960,6 +5973,7 @@ function renderLojaDetalhe() {
         <p class="page-sub"><i data-lucide="map-pin" style="width:12px;height:12px;display:inline-block;vertical-align:-1px"></i> ${escapeHtml(loja.localidade)} · ${loja.itens.length} itens · ${totAno} un. no ano</p>
       </div>
       <div class="page-actions">
+        <button class="btn" onclick="excluirLoja('${loja.id}')"><i data-lucide="trash-2"></i>Excluir loja</button>
         <button class="btn" onclick="exportLojaXLSX('${loja.id}')"><i data-lucide="file-spreadsheet"></i>Exportar</button>
         <button class="btn gold" onclick="addLojaItem('${loja.id}')"><i data-lucide="plus"></i>Novo item</button>
       </div>
@@ -6174,20 +6188,42 @@ async function saveNewLoja() {
   const nome = document.getElementById('newLojaNome').value.trim();
   const local = document.getElementById('newLojaLocal').value.trim();
   if (!nome) { toast('Atenção','Nome é obrigatório','warning'); return; }
+  // O id do doc precisa ser igual ao código: o login da loja busca lojas/{codigo}
+  const codigo = nome.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()
+    .replace(/^loja\s+/,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,30);
+  if (!codigo) { toast('Atenção','Nome inválido','warning'); return; }
+  if (state.lojas.some(l => l.id === codigo || l.codigo === codigo)) {
+    toast('Atenção','Já existe uma loja com esse nome','warning'); return;
+  }
   const nova = {
-    id: uid(),
-    codigo: nome.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,30),
-    nome, localidade: local || '—',
+    id: codigo, codigo,
+    nome, localidade: local || '—', endereco: '',
+    acessoId: codigo.slice(0,3).toUpperCase() + Math.floor(1000+Math.random()*9000),
+    senha: SENHA_PADRAO_LOJA, solicitanteNome: '', cadastrado: false,
     criadoEm: new Date().toISOString(),
     itens: [],
   };
+  if (Cloud.ok() && !(await Cloud.criarLoja(nova))) return;
   state.lojas.push(nova);
+  state.lojas.sort((a,b)=>a.nome.localeCompare(b.nome));
   await Storage.set('solys:lojas', state.lojas);
   await pushLog('loja-new', `${state.user?.name||'?'} criou nova loja: ${nome}`);
   closeModal();
   toast('Loja criada', nome, 'success');
   state.lojaAtiva = nova.id;
   navigate('loja-detalhe');
+}
+
+async function excluirLoja(lojaId) {
+  const loja = state.lojas.find(l => l.id === lojaId); if (!loja) return;
+  if (!confirm(`Excluir ${loja.nome}?\n\nA loja sai da lista e do login, junto com a grade de itens dela. Os pedidos já feitos continuam no histórico e nos relatórios.\n\nNão dá para desfazer.`)) return;
+  if (Cloud.ok() && !(await Cloud.excluirLoja(lojaId))) return;
+  state.lojas = state.lojas.filter(l => l.id !== lojaId);
+  await Storage.set('solys:lojas', state.lojas);
+  await pushLog('loja-del', `${state.user?.name||'?'} excluiu a loja: ${loja.nome}`);
+  toast('Loja excluída', loja.nome, 'info');
+  if (state.lojaAtiva === lojaId) state.lojaAtiva = null;
+  navigate('lojas');
 }
 
 async function exportLojaXLSX(lojaId) {
