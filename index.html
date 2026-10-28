@@ -3842,6 +3842,22 @@ const Cloud = {
     try { await db.collection('lojas').doc(lojaId).update({ itens: this._clean(loja.itens || []) }); return true; }
     catch (e) { console.warn('Cloud._persistLojaItens', e); return false; }
   },
+  // Soma/subtrai quantidades na grade mensal lendo a versão ATUAL do servidor (transação):
+  // não sobrescreve alterações feitas por outro computador. Custo: 1 leitura + 1 escrita.
+  async ajustarGradeItens(lojaId, deltas) {
+    if (!this.ok()) return null;
+    const ref = db.collection('lojas').doc(lojaId);
+    try {
+      return await db.runTransaction(async tx => {
+        const snap = await tx.get(ref);
+        if (!snap.exists) return null;
+        const itens = snap.data().itens || [];
+        aplicarDeltasGrade(itens, deltas);
+        tx.update(ref, { itens: this._clean(itens) });
+        return itens;
+      });
+    } catch (e) { console.warn('Cloud.ajustarGradeItens', e); return null; }
+  },
   async upsertLojaItem(lojaId) { return this._persistLojaItens(lojaId); },
   async incLojaItemMes(lojaId) { return this._persistLojaItens(lojaId); },
   async deleteLojaItem(lojaId) { return this._persistLojaItens(lojaId); },
@@ -7128,10 +7144,12 @@ async function salvarPedido(editId) {
   if (editId) {
     const p = state.pedidos.find(x => x.id === editId);
     if (!p || p.status !== 'Pendente') { toast('Não é possível editar','Pedido já processado','warning'); return; }
+    const deltasEdicao = [...deltasPedido(p.itens, p.data, -1), ...deltasPedido(itens, data, +1)];
     Object.assign(p, { data, solicitante:solic, itens, observacao:obs, anexos, endereco });
     p.historico = p.historico || [];
     p.historico.push({ at:new Date().toISOString(), by:solic, action:'editado' });
     if (Cloud.ok()) await Cloud.updatePedido(p.id, { data, solicitante:solic, itens, observacao:obs, anexos, endereco, historico:p.historico });
+    await ajustarGradeLoja(loja, deltasEdicao);
     await pushLog('pedido-edit', `Pedido de ${loja.nome} editado por ${solic}`, { itens: itens.length });
     toast('Pedido atualizado','', 'success');
   } else {
@@ -7166,35 +7184,50 @@ async function salvarPedido(editId) {
   }
 }
 
-/* Soma cada item do pedido na grade mensal da loja (mês da data do pedido).
-   Se o item ainda não existe na grade, cria. Isso faz com que a planilha
-   SISTEMA_SOLYS_COMPRAS reflita automaticamente todos os pedidos enviados. */
-async function somarPedidoNaGradeLoja(loja, itens, data){
-  if (!loja || !itens?.length) return;
-  const mesIdx = isoToMesIdx(data);
-  const mesKey = MESES[mesIdx];
+/* Grade mensal da loja (loja.itens) = base dos relatórios.
+   Cada pedido soma suas quantidades no mês do pedido; excluir/editar desfaz/refaz a soma. */
+function deltasPedido(itens, data, sinal){
+  const mesKey = MESES[isoToMesIdx(data)];
+  return (itens||[])
+    .map(it => ({ descricao: (it.descricao||'').trim().toUpperCase(), mesKey, qtd: sinal * (it.quantidade|0) }))
+    .filter(d => d.descricao && d.qtd);
+}
 
-  for (const it of itens) {
-    const desc = (it.descricao||'').trim().toUpperCase();
-    if (!desc) continue;
-    // Atualiza local imediatamente (UX rápido)
-    let existente = loja.itens.find(x => (x.descricao||'').trim().toUpperCase() === desc);
+function aplicarDeltasGrade(itens, deltas){
+  // Junta -antigo/+novo do mesmo item/mês antes de aplicar (edição não distorce com o limite em zero)
+  const soma = new Map();
+  deltas.forEach(d => { const k = d.descricao + '|' + d.mesKey; soma.set(k, { ...d, qtd: (soma.get(k)?.qtd || 0) + d.qtd }); });
+  for (const d of soma.values()) {
+    if (!d.qtd) continue;
+    let existente = itens.find(x => (x.descricao||'').trim().toUpperCase() === d.descricao);
     if (!existente) {
+      if (d.qtd <= 0) continue;
       existente = {
-        id: uid(), descricao: desc,
+        id: uid(), descricao: d.descricao,
         jan:0,fev:0,mar:0,abr:0,mai:0,jun:0,jul:0,ago:0,set:0,out:0,nov:0,dez:0,
-        obs:'',
-        criadoEm: new Date().toISOString(),
-        historico: []
+        obs:'', criadoEm: new Date().toISOString(), historico: []
       };
-      loja.itens.push(existente);
+      itens.push(existente);
     }
-    existente[mesKey] = (existente[mesKey]|0) + (it.quantidade|0);
+    existente[d.mesKey] = Math.max(0, (existente[d.mesKey]|0) + d.qtd);
   }
-  // Persiste UMA vez após o loop — _persistLojaItens grava o array inteiro,
-  // então chamar por item fazia N escritas idênticas do mesmo doc no Firestore.
-  if (Cloud.ok()) await Cloud._persistLojaItens(loja.id);
+  return itens;
+}
+
+async function ajustarGradeLoja(loja, deltas){
+  if (!loja || !deltas.length) return;
+  const fresh = Cloud.ok() ? await Cloud.ajustarGradeItens(loja.id, deltas) : null;
+  if (fresh) loja.itens = Cloud._mapLoja({ id: loja.id, itens: fresh }).itens;
+  else {
+    aplicarDeltasGrade(loja.itens = loja.itens || [], deltas);
+    if (Cloud.ok()) toast('Histórico não sincronizado', 'O pedido foi salvo, mas a soma no histórico da loja falhou. Recarregue a página.', 'warning');
+  }
   await Storage.set('solys:lojas', state.lojas);
+}
+
+// Mantido pelo nome antigo: soma o pedido novo na grade
+async function somarPedidoNaGradeLoja(loja, itens, data){
+  await ajustarGradeLoja(loja, deltasPedido(itens, data, +1));
 }
 
 /* ---- AÇÕES RÁPIDAS PARA GESTÃO ---- */
@@ -7314,6 +7347,7 @@ async function salvarEdicaoGestao(id){
   if (!itens.length) { toast('Atenção','Pelo menos um item com quantidade','warning'); return; }
   const ano = isoToAno(p.data);
   const data = `${ano}-${String(mesIdx+1).padStart(2,'0')}-01`;
+  const deltasEdicao = [...deltasPedido(p.itens, p.data, -1), ...deltasPedido(itens, data, +1)];
 
   p.solicitante = solic;
   p.observacao = obs;
@@ -7329,6 +7363,7 @@ async function salvarEdicaoGestao(id){
   p.historico = p.historico || [];
   p.historico.push({ at:new Date().toISOString(), by:state.user.name, action:'editado pela diretoria' });
   if (Cloud.ok()) await Cloud.updatePedido(id, { solicitante:solic, observacao:obs, itens, data, endereco, historico:p.historico });
+  await ajustarGradeLoja(lojaDoPedido, deltasEdicao);
   await Storage.set('solys:pedidos', state.pedidos);
   await pushLog('pedido-edit-gestao', `${state.user.name} editou pedido de ${p.lojaNome}`);
   closeModal();
@@ -7731,8 +7766,10 @@ async function excluirPedido(id) {
   const p = state.pedidos.find(x => x.id === id);
   if (!p || p.status !== 'Pendente') return;
   if (!confirm(`Excluir o pedido de ${MES_NOME[isoToMesIdx(p.data)]}/${isoToAno(p.data)}?`)) return;
-  if (Cloud.ok()) await Cloud.deletePedido(id);
+  if (Cloud.ok() && !(await Cloud.deletePedido(id))) return;
   state.pedidos = state.pedidos.filter(x => x.id !== id);
+  // Tira do histórico mensal o que esse pedido tinha somado
+  await ajustarGradeLoja(state.lojas.find(l => l.id === p.lojaId), deltasPedido(p.itens, p.data, -1));
   await Storage.set('solys:pedidos', state.pedidos);
   await pushLog('pedido-del', `Pedido de ${p.lojaNome} (${p.solicitante}) excluído`);
   toast('Pedido excluído','','info');
