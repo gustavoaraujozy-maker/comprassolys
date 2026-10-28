@@ -10,6 +10,7 @@ Sistema interno **leve** de pedidos de compras, usado essencialmente para
 - **Projeto Firebase:** `comprassolys`
 - **Coleções:** `lojas` (itens embutidos no doc), `pedidos`, `config/gestao`
 - **Deploy:** Vercel, a partir da branch `main` → push na `main` republica o site
+  - Autorizado pelo dono: depois de testar, publicar direto na `main` sem perguntar.
 
 ## REGRA OBRIGATÓRIA (pedido do dono)
 **Antes de implementar QUALQUER mudança pedida, faça primeiro uma análise de
@@ -27,6 +28,11 @@ Cheque sempre:
 4. **Armazenamento** — manter dados enxutos; é um sistema de relatório, não de mídia.
 
 Se a mudança for "grande" ou puder pesar, **avise o usuário e proponha a alternativa leve**.
+
+## Pedidos
+- Mês de referência automático: a partir do dia 20 o pedido novo vai para o mês seguinte
+  (`DIA_VIRADA_PEDIDO`). A data real fica em `criadoEm` e sai no PDF como "Data do pedido".
+- Cada pedido soma suas quantidades na grade mensal da loja (`loja.itens`); excluir/editar desfaz/refaz.
 
 ## Login
 - E-mail fictício derivado do código da loja: `<codigo sem hífen>@solyscompras.com` (não é gravado no banco)
