@@ -3404,6 +3404,10 @@ input[type=password], input[type=email], input[type=search]{
 .loja-pick .lp-arrow{width:18px;height:18px;color:var(--ink-400);flex:none}
 .loja-pick:hover .lp-arrow{color:var(--navy-700)}
 
+.conf-mes{text-align:center;padding:18px;border-radius:14px;background:rgba(10,61,124,.04);border:1px solid var(--border)}
+.conf-mes-lbl{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-300)}
+.conf-mes-val{font-size:28px;font-weight:800;color:var(--navy-700);letter-spacing:-.02em;margin-top:6px}
+.conf-mes-sub{font-size:12.5px;color:var(--ink-300);margin-top:6px}
 .fld.fld-fixo{display:flex;align-items:center;gap:8px;background:rgba(10,61,124,.04) !important;color:var(--ink-100);cursor:default}
 .fld.fld-fixo svg{width:15px;height:15px;color:var(--navy-600)}
 .fld.fld-fixo span{color:var(--ink-300)}
@@ -4288,12 +4292,11 @@ function hojeISO(){
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
-// Mês de referência de um pedido novo: as lojas pedem no fim do mês para o mês seguinte.
-// A partir do dia DIA_VIRADA_PEDIDO vale o próximo mês (dezembro vira janeiro do ano seguinte).
-const DIA_VIRADA_PEDIDO = 20;
+// Mês de referência de um pedido novo: SEMPRE o mês seguinte (regra do dono).
+// Pedido feito em qualquer dia de outubro é de novembro; dezembro vira janeiro do ano seguinte.
 function mesReferenciaNovoPedido(){
   const d = new Date();
-  const ref = d.getDate() >= DIA_VIRADA_PEDIDO ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
+  const ref = new Date(d.getFullYear(), d.getMonth() + 1, 1);
   return `${ref.getFullYear()}-${String(ref.getMonth()+1).padStart(2,'0')}-01`;
 }
 function isoToBR(iso){
@@ -6992,7 +6995,7 @@ function abrirNovoPedido(editId) {
       <div class="form-row-2">
         <div>
           <label class="fld-label">Pedido para o mês de</label>
-          <div class="fld fld-fixo" title="A partir do dia ${DIA_VIRADA_PEDIDO}, o pedido vai para o mês seguinte"><i data-lucide="calendar"></i><b>${MES_NOME[isoToMesIdx(dataPedido)]} / ${isoToAno(dataPedido)}</b><span>· feito em ${feitoEm}</span></div>
+          <div class="fld fld-fixo" title="O pedido é sempre para o mês seguinte"><i data-lucide="calendar"></i><b>${MES_NOME[isoToMesIdx(dataPedido)]} / ${isoToAno(dataPedido)}</b><span>· feito em ${feitoEm}</span></div>
         </div>
         <div>
           <label class="fld-label">Quem está solicitando</label>
@@ -7124,7 +7127,7 @@ function usarReferencia() {
   toast('Base carregada','Itens do mês anterior copiados','success');
 }
 
-async function salvarPedido(editId) {
+async function salvarPedido(editId, confirmado) {
   // Evita duplo clique: dois cliques rápidos criavam dois pedidos
   if (state._salvandoPedido) return;
   state._salvandoPedido = true;
@@ -7146,6 +7149,26 @@ async function salvarPedido(editId) {
   const pedidoOriginal = editId ? state.pedidos.find(x => x.id === editId) : null;
   const data = pedidoOriginal?.data || mesReferenciaNovoPedido();
   const mesIdx = isoToMesIdx(data);
+
+  // Pedido novo: confirma o mês antes de enviar
+  if (!editId && !confirmado) {
+    const totalUn = itens.reduce((n, i) => n + (i.quantidade|0), 0);
+    openModal({
+      title: 'Confirmar envio do pedido',
+      body: `
+        <div class="conf-mes">
+          <div class="conf-mes-lbl">Este pedido é para o mês de</div>
+          <div class="conf-mes-val">${MES_NOME[mesIdx]} / ${isoToAno(data)}</div>
+          <div class="conf-mes-sub">Feito em ${isoToBR(hojeISO())} · ${itens.length} produto(s) · ${totalUn} unidade(s)</div>
+        </div>
+        <p style="font-size:13px;color:var(--ink-300);margin-top:12px;line-height:1.5">Os pedidos são sempre para o mês seguinte. Confira e confirme para enviar à Diretoria.</p>`,
+      actions: `
+        <button class="btn ghost" onclick="closeModal()">Voltar e revisar</button>
+        <button class="btn gold" onclick="closeModal();salvarPedido(null, true)"><i data-lucide="send"></i>Confirmar e enviar</button>`
+    });
+    setTimeout(()=>lucide.createIcons(),30);
+    return;
+  }
 
   const lojaId = getLojaSelecionada();
   const loja = state.lojas.find(l => l.id === lojaId);

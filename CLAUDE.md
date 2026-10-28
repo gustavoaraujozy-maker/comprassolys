@@ -30,8 +30,9 @@ Cheque sempre:
 Se a mudança for "grande" ou puder pesar, **avise o usuário e proponha a alternativa leve**.
 
 ## Pedidos
-- Mês de referência automático: a partir do dia 20 o pedido novo vai para o mês seguinte
-  (`DIA_VIRADA_PEDIDO`). A data real fica em `criadoEm` e sai no PDF como "Data do pedido".
+- Mês de referência: pedido novo é SEMPRE do mês seguinte (feito em outubro → novembro;
+  dezembro → janeiro). Antes de enviar, a loja confirma o mês numa janela. A data real fica
+  em `criadoEm` e sai no PDF como "Data do pedido".
 - Cada pedido soma suas quantidades na grade mensal da loja (`loja.itens`); excluir/editar desfaz/refaz.
 
 ## Login
