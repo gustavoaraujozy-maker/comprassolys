@@ -3404,6 +3404,10 @@ input[type=password], input[type=email], input[type=search]{
 .loja-pick .lp-arrow{width:18px;height:18px;color:var(--ink-400);flex:none}
 .loja-pick:hover .lp-arrow{color:var(--navy-700)}
 
+.fld.fld-fixo{display:flex;align-items:center;gap:8px;background:rgba(10,61,124,.04) !important;color:var(--ink-100);cursor:default}
+.fld.fld-fixo svg{width:15px;height:15px;color:var(--navy-600)}
+.fld.fld-fixo span{color:var(--ink-300)}
+
 /* Configurações: resumo */
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .stat{padding:14px;border:1px solid var(--border);border-radius:12px;background:rgba(10,61,124,.02)}
@@ -4278,6 +4282,23 @@ function isoToMesIdx(iso){
   if (!iso) return new Date().getMonth();
   const m = /^(\d{4})-(\d{2})/.exec(String(iso));
   return m ? parseInt(m[2])-1 : new Date(iso).getMonth();
+}
+// Data de hoje no fuso do computador (toISOString usa UTC: depois das 21h viraria o dia seguinte)
+function hojeISO(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+// Mês de referência de um pedido novo: as lojas pedem no fim do mês para o mês seguinte.
+// A partir do dia DIA_VIRADA_PEDIDO vale o próximo mês (dezembro vira janeiro do ano seguinte).
+const DIA_VIRADA_PEDIDO = 20;
+function mesReferenciaNovoPedido(){
+  const d = new Date();
+  const ref = d.getDate() >= DIA_VIRADA_PEDIDO ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 1);
+  return `${ref.getFullYear()}-${String(ref.getMonth()+1).padStart(2,'0')}-01`;
+}
+function isoToBR(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||''));
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '—';
 }
 function isoToAno(iso){
   if (!iso) return new Date().getFullYear();
@@ -6801,7 +6822,7 @@ function abrirPedidoComBaseEmMes(lojaId, ano, mes){
     quantidade: i.quantidade||1,
     unidade: i.unidade||'UN'
   }));
-  state._mesPedidoBase = MESES.indexOf(mes);
+  // O pedido novo sai sempre no mês atual — o mês de origem só fornece os itens
   abrirNovoPedido();
 }
 
@@ -6951,10 +6972,9 @@ function abrirNovoPedido(editId) {
   }
 
   const sugestoes = [...new Set(loja.itens.map(i => i.descricao))].sort();
-  const mesAtualIdx = editando ? isoToMesIdx(editando.data)
-                    : (state._mesPedidoBase != null ? state._mesPedidoBase : new Date().getMonth());
-  state._mesPedidoBase = null;
-  const anoAtual = new Date().getFullYear();
+  // Novo pedido: mês de referência automático. Edição: mantém o mês original do pedido.
+  const dataPedido = editando ? editando.data : mesReferenciaNovoPedido();
+  const feitoEm = editando ? fmt.date(editando.criadoEm) : isoToBR(hojeISO());
 
   const c = document.getElementById('content');
   c.innerHTML = `
@@ -6971,10 +6991,8 @@ function abrirNovoPedido(editId) {
     <div class="panel" style="max-width:920px">
       <div class="form-row-2">
         <div>
-          <label class="fld-label">Para o mês de</label>
-          <select id="pedMes" class="fld">
-            ${MESES.map((m,i) => `<option value="${i}" ${i===mesAtualIdx?'selected':''}>${MES_NOME[i]} / ${anoAtual}</option>`).join('')}
-          </select>
+          <label class="fld-label">Pedido para o mês de</label>
+          <div class="fld fld-fixo" title="A partir do dia ${DIA_VIRADA_PEDIDO}, o pedido vai para o mês seguinte"><i data-lucide="calendar"></i><b>${MES_NOME[isoToMesIdx(dataPedido)]} / ${isoToAno(dataPedido)}</b><span>· feito em ${feitoEm}</span></div>
         </div>
         <div>
           <label class="fld-label">Quem está solicitando</label>
@@ -7113,7 +7131,6 @@ async function salvarPedido(editId) {
   const btnSalvar = document.getElementById('btnSalvarPedido');
   if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.style.opacity = '.6'; }
   try {
-  const mesIdx = parseInt(document.getElementById('pedMes')?.value);
   const solic = document.getElementById('pedSolic').value.trim().toUpperCase();
   const obs = document.getElementById('pedObs').value.trim();
   const endereco = (document.getElementById('pedEndereco')?.value || '').trim();
@@ -7123,15 +7140,12 @@ async function salvarPedido(editId) {
     .map(it => ({ descricao: it.descricao.trim().toUpperCase(), quantidade: it.quantidade|0, unidade: (it.unidade||'UN').trim().toUpperCase() }));
 
   if (!solic) { toast('Atenção','Informe quem está solicitando','warning'); return; }
-  if (isNaN(mesIdx)) { toast('Atenção','Escolha o mês do pedido','warning'); return; }
   if (!itens.length) { toast('Atenção','Preencha a quantidade de pelo menos um produto','warning'); return; }
 
-  // monta a data como o primeiro dia do mês escolhido.
-  // Em edição, preserva o ano original do pedido (editar um pedido de ano
-  // anterior o jogava para o ano corrente e ele sumia do histórico).
+  // Novo pedido = mês de referência automático (dia 1º do mês). A data real fica em criadoEm.
   const pedidoOriginal = editId ? state.pedidos.find(x => x.id === editId) : null;
-  const ano = pedidoOriginal?.data ? isoToAno(pedidoOriginal.data) : new Date().getFullYear();
-  const data = `${ano}-${String(mesIdx+1).padStart(2,'0')}-01`;
+  const data = pedidoOriginal?.data || mesReferenciaNovoPedido();
+  const mesIdx = isoToMesIdx(data);
 
   const lojaId = getLojaSelecionada();
   const loja = state.lojas.find(l => l.id === lojaId);
@@ -7346,7 +7360,7 @@ async function salvarEdicaoGestao(id){
     .map(i => ({ descricao:i.descricao.trim().toUpperCase(), quantidade:i.quantidade|0, unidade:(i.unidade||'UN').trim().toUpperCase() }));
   if (!itens.length) { toast('Atenção','Pelo menos um item com quantidade','warning'); return; }
   const ano = isoToAno(p.data);
-  const data = `${ano}-${String(mesIdx+1).padStart(2,'0')}-01`;
+  const data = mesIdx === isoToMesIdx(p.data) ? p.data : `${ano}-${String(mesIdx+1).padStart(2,'0')}-01`;
   const deltasEdicao = [...deltasPedido(p.itens, p.data, -1), ...deltasPedido(itens, data, +1)];
 
   p.solicitante = solic;
@@ -7505,10 +7519,10 @@ function baixarPedidoWord(id){
   const temEndereco = !!(p.endereco || lojaAtual?.endereco);
   const plural = (n, s) => `${n} ${s}${n === 1 ? '' : 's'}`;
   const pares = [
-    [['Loja', p.lojaNome || '—'],            ['Mês de referência', `${mes} de ${ano}`]],
-    [['Solicitante', p.solicitante || '—'],  ['Situação', p.status || '—']],
-    [['Itens', `${plural(p.itens.length, 'produto')} · ${plural(totalUn, 'unidade')}`],
-     anexos.length ? ['Anexos', plural(anexos.length, 'arquivo')] : null],
+    [['Loja', p.lojaNome || '—'],            ['Data do pedido', fmt.date(p.criadoEm) || isoToBR(p.data)]],
+    [['Solicitante', p.solicitante || '—'],  ['Mês de referência', `${mes} de ${ano}`]],
+    [['Itens', `${plural(p.itens.length, 'produto')} · ${plural(totalUn, 'unidade')}`], ['Situação', p.status || '—']],
+    ...(anexos.length ? [[['Anexos', plural(anexos.length, 'arquivo')], null]] : []),
   ];
   const infoColW = (W - M*2) / 2;
   const celula = (x, y0, k, v, largura) => {
