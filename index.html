@@ -3246,6 +3246,94 @@ input[type=password], input[type=email], input[type=search]{
   .ped-foot,.ped-v2 .ped-foot{flex-wrap:wrap;gap:8px}
 }
 
+
+/* ============================================================
+   PADRÃO VISUAL + LOGIN + RESPONSIVO (revisão out/2026)
+   ============================================================ */
+/* Busca padrão de página (substitui inputs com estilo inline do tema escuro antigo) */
+.page-search{position:relative;flex:1 1 220px;max-width:280px;min-width:0}
+.page-search > i, .page-search > svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--ink-400);pointer-events:none}
+.page-search input{
+  width:100%;height:38px;padding:0 12px 0 34px;
+  background:#fff;border:1px solid var(--border-strong);border-radius:10px;
+  font:inherit;font-size:13px;color:var(--ink-100);
+  transition:border-color .15s, box-shadow .15s;
+}
+.page-search input::placeholder{color:var(--ink-400)}
+.page-search input:focus{outline:none;border-color:var(--navy-600);box-shadow:0 0 0 3px rgba(10,61,124,.10)}
+.page-search.sm{flex:0 1 200px}
+.page-search.sm input{height:32px;font-size:12.5px}
+.page-actions{flex-wrap:wrap}
+
+/* Foco visível e consistente em botões */
+.btn:focus-visible,.qbtn:focus-visible,.icon-btn:focus-visible,.nav-item:focus-visible,.btn-primary:focus-visible{
+  outline:2px solid var(--navy-600);outline-offset:2px;
+}
+
+/* Histórico por mês: nome em cima, número embaixo (antes ficavam sobrepostos) */
+.month-card{flex-direction:column;gap:3px;padding:10px 6px;min-height:58px}
+.month-card .mc-sub{margin-top:0}
+
+/* Login: erro dentro do formulário, carregando e ajuda */
+.login-erro{
+  display:flex;align-items:flex-start;gap:8px;
+  margin:2px 0 10px;padding:10px 12px;border-radius:10px;
+  background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.22);
+  color:#b91c1c;font-size:12.5px;line-height:1.45;
+}
+.login-erro::before{content:'!';flex:none;width:18px;height:18px;border-radius:50%;background:#dc2626;color:#fff;font-weight:700;font-size:12px;display:grid;place-items:center}
+.login-erro.hidden{display:none}
+.login-help{margin-top:14px;text-align:center;font-size:11.5px;color:var(--ink-400);line-height:1.45}
+#btnEntrarLoja{display:flex;align-items:center;justify-content:center;gap:8px}
+#btnEntrarLoja .btn-spin{display:none;width:15px;height:15px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .7s linear infinite}
+#btnEntrarLoja.loading .btn-spin{display:inline-block}
+#btnEntrarLoja:disabled{opacity:.85;cursor:wait}
+.login-card.shake{animation:shake .35s ease}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+
+/* Acessos: enviar login */
+.acessos-aviso{
+  display:flex;gap:12px;align-items:flex-start;
+  margin-bottom:16px;padding:14px 16px;border-radius:12px;
+  background:rgba(46,116,201,.06);border:1px solid rgba(46,116,201,.18);
+  font-size:13px;line-height:1.55;color:var(--ink-200);
+}
+.acessos-aviso > i, .acessos-aviso > svg{flex:none;width:18px;height:18px;color:var(--navy-600);margin-top:2px}
+.acesso-card .ac-enviar{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.acesso-card .ac-enviar .btn{justify-content:center;width:100%}
+.btn.ac-wpp{background:#25d366 !important;border-color:#25d366 !important;color:#fff !important}
+.btn.ac-wpp:hover{background:#1ebe5a !important;border-color:#1ebe5a !important}
+
+/* Celular */
+@media (max-width:768px){
+  /* sombra do menu lateral só quando ele está aberto (antes vazava na borda esquerda) */
+  .sidebar{box-shadow:none !important}
+  .sidebar.mobile-open{box-shadow:0 0 40px rgba(0,0,0,.4) !important}
+
+  /* 16px evita o zoom automático do iPhone ao tocar no campo */
+  .login-card .select-wrap select, .login-card .select-wrap input,
+  .login-split .select-wrap select, .login-split .select-wrap input,
+  .page-search input, .fld, .modal input, .modal select, .modal textarea{font-size:16px !important}
+
+  .login-screen{padding:12px !important;padding-top:max(12px, env(safe-area-inset-top)) !important;align-items:flex-start !important}
+  .login-split{border-radius:18px !important}
+  .login-split .btn-primary{padding:14px 16px !important;font-size:15px !important}
+
+  .page-search, .page-search.sm{flex:1 1 100%;max-width:none}
+  .page-actions .page-search + .btn, .page-actions .btn{min-height:40px}
+  .acessos-aviso{font-size:12.5px;padding:12px}
+  .acesso-card .ac-acoes .qbtn{flex:1 1 calc(50% - 6px);justify-content:center}
+  .table-wrap{-webkit-overflow-scrolling:touch}
+  .month-card{min-height:52px}
+}
+@media (max-width:360px){
+  .acesso-card .ac-enviar{grid-template-columns:1fr}
+}
+/* Tablet: menu recolhido de 72px — o logo cabia só no menu largo */
+@media (min-width:769px) and (max-width:980px){
+  .sidebar .brand-with-logo{padding:14px 8px !important}
+  .sidebar .brand-with-logo img{width:52px !important;max-width:100%;height:auto !important}
+}
 </style>
 </head>
 <body>
@@ -3267,29 +3355,33 @@ input[type=password], input[type=email], input[type=search]{
     </div>
     <div class="login-card">
     <div class="login-title">Bem-vindo(a) 👋</div>
-    <p class="login-sub">Selecione sua loja e informe a senha</p>
+    <p class="login-sub">Entre com o e-mail e a senha que você recebeu</p>
 
+    <form id="loginForm" onsubmit="event.preventDefault();entrarLojaUnificado()" autocomplete="on" novalidate>
     <div class="field">
-      <label>Usuário</label>
+      <label for="loginUsuario">E-mail</label>
       <div class="select-wrap">
-        <i data-lucide="user"></i>
-        <select id="loginUsuario" onchange="document.getElementById('loginSenha').focus()">
-          <option value="">Selecione sua loja</option>
-        </select>
+        <i data-lucide="mail"></i>
+        <input type="email" id="loginUsuario" name="username" placeholder="sualoja@solyscompras.com" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="limparErroLogin()" />
       </div>
     </div>
 
     <div class="field">
-      <label>Senha</label>
+      <label for="loginSenha">Senha</label>
       <div class="select-wrap">
         <i data-lucide="lock"></i>
-        <input type="password" id="loginSenha" placeholder="Sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')entrarLojaUnificado()" onkeyup="avisoCapsLock(event)" />
+        <input type="password" id="loginSenha" name="password" placeholder="Sua senha" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="limparErroLogin()" onkeyup="avisoCapsLock(event)" />
         <button type="button" class="pwd-eye" onclick="togglePwd('loginSenha', this)" title="Mostrar/ocultar" aria-label="Mostrar ou ocultar senha"><i data-lucide="eye"></i></button>
       </div>
       <div class="login-caps hidden" id="loginCaps"><i data-lucide="alert-triangle"></i>Caps Lock ligado</div>
     </div>
 
-    <button class="btn-primary" id="btnEntrarLoja" onclick="entrarLojaUnificado()">Entrar</button>
+    <div class="login-erro hidden" id="loginErro" role="alert"></div>
+
+    <button type="submit" class="btn-primary" id="btnEntrarLoja"><span class="btn-spin"></span><span class="btn-txt">Entrar</span></button>
+    </form>
+
+    <p class="login-help">Esqueceu a senha? Fale com a Diretoria para receber um novo acesso.</p>
 
     <div class="login-foot">SOLYS · Gestão Administrativa</div>
     </div>
@@ -3599,7 +3691,7 @@ const Cloud = {
       const snap = await db.collection('lojas').doc(codigoLoja).get();
       if (!snap.exists) return { error: { message: 'Loja não encontrada' } };
       if ((snap.data().senha || '') !== senha) return { error: { message: 'Senha incorreta' } };
-      return { data: { session: { codigo: codigoLoja } }, error: null };
+      return { data: { session: { codigo: codigoLoja }, loja: this._mapLoja({ id: snap.id, ...snap.data() }) }, error: null };
     } catch (e) { return { error: { message: e.message } }; }
   },
   async signInDiretoria(senha){
@@ -4194,67 +4286,87 @@ function pseudoUserLoja(loja) {
 function showLogin() {
   document.getElementById('login').style.display = 'flex';
   document.getElementById('app').classList.remove('active');
-  // Pré-preenche o último usuário usado neste aparelho (só localStorage, sem custo)
+  // Pré-preenche: link enviado à loja (?loja=bezerra) ou o último e-mail usado neste computador
   const usr = document.getElementById('loginUsuario');
   if (usr) {
-    const ordenadas = [...(state.lojas||[])].sort((a,b)=>a.nome.localeCompare(b.nome));
-    usr.innerHTML = `<option value="">Selecione sua loja</option>` +
-      ordenadas.map(l => `<option value="${escapeHtml(l.id)}">${escapeHtml(l.nome)} — ${escapeHtml(l.localidade)}</option>`).join('') +
-      `<option value="diretoria">Diretoria</option>`;
+    let pre = '';
     try {
-      const ult = localStorage.getItem('solys:ultimoUsuario') || '';
-      if ([...usr.options].some(o => o.value === ult)) usr.value = ult;
+      const q = normUsuario(new URLSearchParams(location.search).get('loja'));
+      const l = q && state.lojas.find(x => compactUsuario(x.codigo || x.id) === compactUsuario(q));
+      if (l) pre = emailLoja(l);
     } catch (e) {}
+    if (!pre) { try { pre = localStorage.getItem('solys:ultimoEmail') || ''; } catch (e) {} }
+    usr.value = pre;
     setTimeout(()=>document.getElementById(usr.value ? 'loginSenha' : 'loginUsuario')?.focus(), 80);
   }
   // Limpa campos
   const senhaInp = document.getElementById('loginSenha');
   if (senhaInp) senhaInp.value = '';
+  limparErroLogin();
+  setLoginCarregando(false);
   setTimeout(()=>lucide.createIcons(),30);
 }
 
 async function entrarLojaUnificado(){
-  const usuario = normUsuario(document.getElementById('loginUsuario')?.value);
-  const senha = document.getElementById('loginSenha')?.value || '';
-  if (!usuario) { toast('Atenção','Selecione sua loja','warning'); return; }
-  if (!senha) { toast('Atenção','Informe a senha','warning'); return; }
-  const lembrar = () => { try { localStorage.setItem('solys:ultimoUsuario', usuario); } catch (e) {} };
-
-  // Diretoria/Administrador entram pelo mesmo formulário
-  if (['diretoria','admin','administrador','gestao'].includes(usuario)) {
-    lembrar();
-    await entrarComoGestao('Diretoria', senha);
-    return;
-  }
-  // Loja: aceita o código (ex: bezerra), o nome sem "loja" ou o ID de acesso
-  const loja = state.lojas.find(l => l.id === usuario || normUsuario(l.codigo) === usuario
-    || normUsuario(l.nome) === usuario || normUsuario(l.acessoId) === usuario);
-  if (!loja) { toast('Acesso negado','Usuário não encontrado','error'); return; }
-  const lojaId = loja.id;
-  lembrar();
   const btn = document.getElementById('btnEntrarLoja');
   if (btn?.disabled) return;
-  if (btn) { btn.disabled = true; btn.textContent = 'Entrando...'; }
-  // injeta um shadow input pra reusar loginLoja sem refatorar
-  let shadow = document.getElementById(`lpw-${lojaId}`);
-  if (!shadow) {
-    shadow = document.createElement('input');
-    shadow.type = 'hidden'; shadow.id = `lpw-${lojaId}`;
-    document.body.appendChild(shadow);
-  }
-  shadow.value = senha;
+  const email = String(document.getElementById('loginUsuario')?.value || '').trim().toLowerCase();
+  const senha = document.getElementById('loginSenha')?.value || '';
+  if (!email) { erroLogin('Digite o seu e-mail de acesso.', 'loginUsuario'); return; }
+  if (!senha) { erroLogin('Digite a sua senha.', 'loginSenha'); return; }
+  // Só a parte antes do @ identifica a conta (aceita também digitar só "bezerra")
+  const usuario = compactUsuario(email.split('@')[0]);
+  const lembrar = () => { try { localStorage.setItem('solys:ultimoEmail', email); } catch (e) {} };
+
+  setLoginCarregando(true);
   try {
-    await loginLoja(lojaId);
+    // Diretoria/Administrador entram pelo mesmo formulário
+    if (['diretoria','admin','administrador','gestao'].includes(usuario)) {
+      lembrar();
+      await entrarComoGestao('Diretoria', senha);
+      return;
+    }
+    // Loja: aceita o código (ex: bezerra), o nome sem "loja" ou o ID de acesso
+    const loja = state.lojas.find(l => [l.id, l.codigo, l.nome, l.acessoId].some(v => v && compactUsuario(v) === usuario));
+    if (!loja) { erroLogin('E-mail não encontrado. Confira o e-mail que você recebeu.', 'loginUsuario'); return; }
+    lembrar();
+    await loginLoja(loja.id, senha);
   } finally {
-    shadow.remove();
-    if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+    setLoginCarregando(false);
   }
+}
+
+// Mensagem de erro dentro do formulário (mais claro que só o toast no celular)
+function erroLogin(msg, focoId){
+  const el = document.getElementById('loginErro');
+  if (el) {
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    const card = el.closest('.login-card');
+    card?.classList.remove('shake'); void card?.offsetWidth; card?.classList.add('shake');
+  }
+  if (focoId) document.getElementById(focoId)?.focus();
+}
+function limparErroLogin(){ document.getElementById('loginErro')?.classList.add('hidden'); }
+function setLoginCarregando(on){
+  const btn = document.getElementById('btnEntrarLoja');
+  if (!btn) return;
+  btn.disabled = on;
+  btn.classList.toggle('loading', on);
+  const t = btn.querySelector('.btn-txt'); if (t) t.textContent = on ? 'Entrando...' : 'Entrar';
 }
 
 function avisoCapsLock(ev){
   const el = document.getElementById('loginCaps');
   if (el && ev.getModifierState) el.classList.toggle('hidden', !ev.getModifierState('CapsLock'));
 }
+
+// E-mail fictício de login da loja — derivado do código, não precisa gravar no banco
+const DOMINIO_LOGIN = 'solyscompras.com';
+const EMAIL_DIRETORIA = 'diretoria@' + DOMINIO_LOGIN;
+function emailLoja(l){ return `${compactUsuario(l.codigo || l.id)}@${DOMINIO_LOGIN}`; }
+// "Loja Sede Ceará" / "sede-ceara" -> "sedeceara"
+function compactUsuario(v){ return normUsuario(v).replace(/-/g,''); }
 
 // "Loja Sede Ceará" -> "sede-ceara"
 function normUsuario(v){
@@ -4271,31 +4383,28 @@ function togglePwd(inputId, btn){
   lucide.createIcons();
 }
 
-async function loginLoja(lojaId){
+async function loginLoja(lojaId, senhaDigitada){
   const loja = state.lojas.find(l => l.id === lojaId);
-  if (!loja) { toast('Erro','Loja não encontrada','error'); return; }
-  const senha = (document.getElementById(`lpw-${lojaId}`)?.value || '');
-  if (!senha) { toast('Atenção','Informe a senha','warning'); return; }
+  if (!loja) { erroLogin('Loja não encontrada.'); return; }
+  const senha = senhaDigitada ?? (document.getElementById(`lpw-${lojaId}`)?.value || '');
+  if (!senha) { erroLogin('Digite a sua senha.', 'loginSenha'); return; }
 
-  // Autentica conferindo a senha guardada no Firestore
-  const { data, error } = await Cloud.signInLoja(loja.codigo, senha);
+  // Autentica conferindo a senha guardada no Firestore (1 leitura só)
+  const { data, error } = await Cloud.signInLoja(loja.id, senha);
   if (error || !data?.session) {
-    // Distingue senha errada de problema de conexão — antes tudo era "Senha incorreta"
+    // Distingue senha errada de problema de conexão
     const msg = error?.message || '';
-    if (msg === 'Senha incorreta') toast('Acesso negado', 'Senha incorreta', 'error');
-    else if (msg === 'Loja não encontrada') toast('Erro', 'Loja não encontrada no servidor', 'error');
-    else toast('Sem conexão', 'Não foi possível falar com o servidor. Verifique a internet e tente de novo.', 'error');
+    if (msg === 'Senha incorreta') erroLogin('Senha incorreta. Confira maiúsculas, minúsculas e símbolos.', 'loginSenha');
+    else if (msg === 'Loja não encontrada') erroLogin('Loja não encontrada no servidor.');
+    else erroLogin('Sem conexão com o servidor. Verifique a internet e tente de novo.');
     return;
   }
 
   // Lembra a loja neste aparelho para pré-selecionar no próximo login
   try { localStorage.setItem('solys:ultimaLoja', lojaId); } catch (e) {}
 
-  // Atualiza loja com dados frescos do server
-  const fresh = await Cloud.getLoja(lojaId);
-  if (fresh) {
-    Object.assign(loja, fresh);
-  }
+  // Aproveita o documento já lido no login (sem 2ª leitura)
+  if (data.loja) Object.assign(loja, data.loja);
 
   // Acesso direto: loja + senha padrão, sem cadastro de primeiro acesso
   state.user = pseudoUserLoja(loja);
@@ -4392,8 +4501,8 @@ async function entrarComoGestao(role, pass) {
   const { data, error, conta } = await Cloud.signInDiretoria(pass);
   if (error || !data?.session) {
     const msg = error?.message || '';
-    if (/senha|incorret|inválid/i.test(msg)) toast('Acesso negado','Senha incorreta','error');
-    else toast('Sem conexão','Não foi possível falar com o servidor. Tente de novo.','error');
+    if (/senha|incorret|inválid/i.test(msg)) erroLogin('Senha da Diretoria incorreta.', 'loginSenha');
+    else erroLogin('Sem conexão com o servidor. Verifique a internet e tente de novo.');
     return;
   }
   const u = (conta?.nome && state.users.find(x => x.name === conta.nome))
@@ -5499,7 +5608,7 @@ function renderImportar() {
               <div style="display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,.02);border-radius:10px">
                 <div class="kpi-icon"><i data-lucide="file-spreadsheet"></i></div>
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:13px;color:#fff;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(d.name)}</div>
+                  <div style="font-size:13px;color:var(--ink-100);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(d.name)}</div>
                   <div style="font-size:11px;color:var(--ink-300)">${d.records||0} novos · ${d.updated||0} atualizados · ${fmt.ago(d.at)}</div>
                 </div>
               </div>
@@ -6014,7 +6123,7 @@ function renderLojaDetalhe() {
         <div><div class="panel-title">Itens da loja</div><div class="panel-sub">Edite as quantidades direto na tabela · clique e digite</div></div>
         <div style="display:flex;gap:6px;align-items:center">
           <span id="lojaSearchCount" style="font-size:11px;color:var(--ink-300);white-space:nowrap"></span>
-          <input id="lojaSearch" placeholder="Buscar item..." style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;width:100%;max-width:180px" />
+          <div class="page-search sm"><i data-lucide="search"></i><input id="lojaSearch" placeholder="Buscar item..." /></div>
         </div>
       </div>
       <div class="loja-table-wrap">
@@ -7603,8 +7712,7 @@ async function renderPedidosColab() {
         <p class="page-sub">${aprovar.length} aguardando · ${aprovados.length} aprovado(s) · ${entregues.length} entregue(s) · pedidos entregues somem após 20 dias</p>
       </div>
       <div class="page-actions">
-        <input id="pedBusca" placeholder="Buscar loja, item, solicitante..." oninput="filtrarCardsPedidos(this.value)"
-          style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#fff;padding:8px 12px;border-radius:8px;font-size:12.5px;width:100%;max-width:250px" />
+        <div class="page-search"><i data-lucide="search"></i><input id="pedBusca" placeholder="Buscar loja, item, solicitante..." oninput="filtrarCardsPedidos(this.value)" /></div>
         ${rejeitados.length ? `<button class="btn ${state._mostrarRejeitados?'gold':''}" onclick="toggleRejeitados()"><i data-lucide="x-circle"></i>Rejeitados (${rejeitados.length})</button>` : ''}
         <button class="btn" onclick="exportPedidosXLSX()"><i data-lucide="file-spreadsheet"></i>Exportar</button>
       </div>
@@ -7963,16 +8071,26 @@ function openUserModal() {
 function renderAcessos(){
   const c = document.getElementById('content');
   state._mostrarSenhas = state._mostrarSenhas || {};
+  const nPadrao = state.lojas.filter(l => (l.senha||'') === SENHA_PADRAO_LOJA).length;
   c.innerHTML = `
     <div class="page-header">
       <div>
         <h1 class="page-title">Acessos das lojas</h1>
-        <p class="page-sub">${state.lojas.length} loja(s) · cada uma entra direto com a senha padrão <code class="mono" style="color:var(--gold-300)">Sgroup@2026#</code></p>
+        <p class="page-sub">${state.lojas.length} loja(s) · ${nPadrao ? `${nPadrao} ainda com a senha padrão` : 'todas com senha individual'}</p>
       </div>
       <div class="page-actions">
-        <input id="acessosSearch" placeholder="Buscar loja..." oninput="filtrarAcessos(this.value)"
-          style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#fff;padding:8px 12px;border-radius:8px;font-size:12.5px;width:100%;max-width:220px" />
-        <button class="btn" onclick="copiarAcessosCSV()" title="Copia loja, ID e senha de todas as lojas"><i data-lucide="clipboard-copy"></i>Copiar todos</button>
+        <div class="page-search"><i data-lucide="search"></i><input id="acessosSearch" placeholder="Buscar loja..." oninput="filtrarAcessos(this.value)" /></div>
+        <button class="btn" onclick="copiarTodosLogins()" title="Copia a mensagem de acesso de todas as lojas"><i data-lucide="clipboard-copy"></i>Copiar todos</button>
+        <button class="btn gold" onclick="gerarLoginsLojas()" title="Cria uma senha diferente para cada loja"><i data-lucide="key-round"></i>Gerar logins</button>
+      </div>
+    </div>
+
+    <div class="acessos-aviso">
+      <i data-lucide="send"></i>
+      <div>
+        <b>Para enviar o acesso:</b> clique em <b>WhatsApp</b> no card da loja (ou em <b>Copiar</b>).
+        A mensagem vai com o link do sistema, o <b>e-mail de login</b> e a senha da loja.
+        ${nPadrao ? `<br><span style="color:var(--gold-500)">Dica: use <b>Gerar logins</b> para cada loja ter a sua própria senha antes de enviar.</span>` : ''}
       </div>
     </div>
 
@@ -7987,9 +8105,9 @@ function renderAcessos(){
               <div class="ac-nome">${escapeHtml(l.nome)}</div>
               <div class="ac-local"><i data-lucide="map-pin"></i>${escapeHtml(l.localidade)}</div>
             </div>
-            ${l.cadastrado
-              ? `<span class="ac-status ok"><i data-lucide="check-circle"></i>Cadastrada</span>`
-              : `<span class="ac-status pend"><i data-lucide="clock"></i>1º acesso</span>`}
+            ${(l.senha||'') !== SENHA_PADRAO_LOJA
+              ? `<span class="ac-status ok"><i data-lucide="check-circle"></i>Senha própria</span>`
+              : `<span class="ac-status pend"><i data-lucide="clock"></i>Senha padrão</span>`}
           </div>
           <div class="ac-fields">
             <div class="ac-field">
@@ -8002,6 +8120,13 @@ function renderAcessos(){
               <div class="ac-lbl">Endereço (sai nos documentos)</div>
               <div class="ac-val-row">
                 <span class="ac-val" style="font-size:11.5px">${escapeHtml(l.endereco || '— não cadastrado —')}</span>
+              </div>
+            </div>
+            <div class="ac-field">
+              <div class="ac-lbl">E-mail de login</div>
+              <div class="ac-val-row">
+                <code class="ac-val mono">${escapeHtml(emailLoja(l))}</code>
+                <button class="icon-btn" onclick="copiarTexto(emailLoja(state.lojas.find(x=>x.id==='${l.id}')), 'E-mail')" title="Copiar e-mail"><i data-lucide="copy"></i></button>
               </div>
             </div>
             <div class="ac-field">
@@ -8020,6 +8145,10 @@ function renderAcessos(){
               </div>
             </div>
           </div>
+          <div class="ac-enviar">
+            <button class="btn ac-wpp" onclick="enviarLoginWhatsApp('${l.id}')" title="Abrir o WhatsApp com a mensagem pronta"><i data-lucide="message-circle"></i>WhatsApp</button>
+            <button class="btn" onclick="copiarLoginLoja('${l.id}')" title="Copiar mensagem com link, loja e senha"><i data-lucide="copy"></i>Copiar</button>
+          </div>
           <div class="ac-acoes">
             <button class="qbtn" onclick="abrirEditarEndereco('${l.id}')" title="Editar endereço"><i data-lucide="map-pin"></i>Endereço</button>
             <button class="qbtn" onclick="abrirEditarAcesso('${l.id}')" title="Editar ID de acesso e senha"><i data-lucide="key-round"></i>Editar acesso</button>
@@ -8037,10 +8166,11 @@ function renderAcessos(){
         </div>
       </div>
       <ol style="padding-left:20px;font-size:13px;line-height:1.85;color:var(--ink-200)">
-        <li>Na tela de login, a pessoa escolhe a loja na lista e digita a senha <code class="mono">Sgroup@2026#</code> — entra direto, sem cadastro.</li>
-        <li>A Diretoria escolhe <b>Diretoria</b> no fim da lista e usa a senha da gestão.</li>
+        <li>Clique em <b>Gerar logins</b> uma vez: cada loja ganha uma senha própria (ex.: <code class="mono">Bezerra@4821</code>).</li>
+        <li>Envie para cada loja pelo botão <b>WhatsApp</b> (abre o WhatsApp Web no computador). O link já abre o sistema com o e-mail preenchido — é só digitar a senha.</li>
+        <li>O e-mail é só um login (não recebe mensagens). A Diretoria entra com <code class="mono">${EMAIL_DIRETORIA}</code> e a senha da gestão.</li>
         <li>O nome de quem pede é informado no próprio pedido (campo <b>Solicitante</b>).</li>
-        <li>Se trocar a senha de uma loja em <b>"Editar acesso"</b>, use <b>"Resetar senha"</b> para voltar ao padrão.</li>
+        <li>Perdeu a senha? Use <b>Editar acesso</b> para criar outra, ou <b>Resetar senha</b> para voltar à padrão <code class="mono">${SENHA_PADRAO_LOJA}</code>.</li>
       </ol>
     </div>
   `;
@@ -8098,9 +8228,9 @@ async function salvarEnderecoLoja(lojaId){
 async function resetarCadastroLojaUI(lojaId){
   const l = state.lojas.find(x => x.id === lojaId);
   if (!l) return;
-  if (!confirm(`Resetar o cadastro de ${l.nome}?\n\nA senha volta para "Sgroup@2026#" e o nome do solicitante atual${l.solicitanteNome?` (${l.solicitanteNome})`:''} será apagado. A próxima pessoa precisará se cadastrar novamente.`)) return;
+  if (!confirm(`Resetar o cadastro de ${l.nome}?\n\nA senha volta para "${SENHA_PADRAO_LOJA}" e o nome do solicitante atual${l.solicitanteNome?` (${l.solicitanteNome})`:''} será apagado. A próxima pessoa precisará se cadastrar novamente.`)) return;
   l.solicitanteNome = '';
-  l.senha = 'Sgroup@2026#';
+  l.senha = SENHA_PADRAO_LOJA;
   l.cadastrado = false;
   if (Cloud.ok()) await Cloud.resetarCadastroLoja(lojaId);
   await Storage.set('solys:lojas', state.lojas);
@@ -8141,6 +8271,80 @@ function copiarAcessosCSV(){
   });
 }
 
+/* ---- Logins para enviar às lojas ---- */
+const URL_SISTEMA = 'https://solyscompras.vercel.app';
+function linkSistema(lojaId){
+  // Usa o endereço atual quando o site está publicado; abrindo o arquivo local, cai na URL da Vercel
+  const base = /^https?:/.test(location.protocol) ? location.origin + location.pathname.replace(/index\.html$/,'') : URL_SISTEMA + '/';
+  const l = state.lojas.find(x => x.id === lojaId);
+  return `${base}?loja=${encodeURIComponent(l?.codigo || lojaId)}`;
+}
+
+// "Casa Dona Karol" -> "Karol@4821" — fácil de digitar e diferente por loja
+function gerarSenhaLoja(l){
+  const base = String(l?.nome || 'Loja').replace(/^loja\s+/i,'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .trim().split(/\s+/).pop().replace(/[^A-Za-z0-9]/g,'') || 'Loja';
+  const nome = base.charAt(0).toUpperCase() + base.slice(1).toLowerCase();
+  const n = new Uint32Array(1); crypto.getRandomValues(n);
+  return `${nome}@${1000 + (n[0] % 9000)}`;
+}
+
+function mensagemLogin(l){
+  return `Olá! Segue o acesso da *${l.nome}* ao sistema de compras SOLYS:\n\n`
+    + `🔗 Link: ${linkSistema(l.id)}\n`
+    + `📧 E-mail: ${emailLoja(l)}\n`
+    + `🔑 Senha: ${l.senha || SENHA_PADRAO_LOJA}\n\n`
+    + `É só abrir o link, conferir o e-mail e digitar a senha. Guarde esta mensagem.`;
+}
+
+function copiarLoginLoja(lojaId){
+  const l = state.lojas.find(x => x.id === lojaId);
+  if (!l) return;
+  navigator.clipboard.writeText(mensagemLogin(l)).then(()=> toast('Mensagem copiada', `Cole no WhatsApp/e-mail da ${l.nome}`, 'success'));
+}
+
+function enviarLoginWhatsApp(lojaId){
+  const l = state.lojas.find(x => x.id === lojaId);
+  if (!l) return;
+  window.open('https://wa.me/?text=' + encodeURIComponent(mensagemLogin(l)), '_blank', 'noopener');
+}
+
+function copiarTodosLogins(){
+  const txt = [...state.lojas].sort((a,b)=>a.nome.localeCompare(b.nome)).map(l =>
+    `*${l.nome}*\nE-mail: ${emailLoja(l)}\nSenha: ${l.senha || SENHA_PADRAO_LOJA}`).join('\n\n');
+  const link = linkSistema('').replace(/\?loja=.*$/, '');
+  navigator.clipboard.writeText(`Acessos SOLYS · Logística de Compras\nLink: ${link}\n\n${txt}`).then(()=>{
+    toast('Logins copiados', `${state.lojas.length} lojas no clipboard`, 'success');
+  });
+}
+
+// Cria uma senha diferente para cada loja. 1 gravação em lote (1 escrita por loja), só quando clicado.
+async function gerarLoginsLojas(){
+  if (!state.lojas.length) return;
+  // Se ainda há lojas na senha padrão, gera só para elas (não derruba quem já recebeu a sua)
+  const soPadrao = state.lojas.filter(l => (l.senha||'') === SENHA_PADRAO_LOJA);
+  const alvo = soPadrao.length ? soPadrao : state.lojas;
+  const msg = soPadrao.length
+    ? `Gerar uma senha própria para ${alvo.length} loja(s) que ainda usam a senha padrão?\n\n${alvo.map(l=>'• '+l.nome).join('\n')}`
+    : `Todas as lojas já têm senha própria.\nGerar senha NOVA para as ${alvo.length} lojas? As senhas atuais deixam de funcionar.`;
+  if (!confirm(msg)) return;
+
+  const novas = alvo.map(l => ({ l, senha: gerarSenhaLoja(l) }));
+  if (Cloud.ok()) {
+    try {
+      const batch = db.batch();
+      novas.forEach(({ l, senha }) => batch.update(db.collection('lojas').doc(l.id), { senha }));
+      await batch.commit();
+    } catch (e) { toast('Erro ao gerar logins', e.message, 'error'); return; }
+  }
+  novas.forEach(({ l, senha }) => { l.senha = senha; });
+  await Storage.set('solys:lojas', state.lojas);
+  await pushLog('loja-acesso', `Logins individuais gerados para ${novas.length} loja(s)`);
+  state._mostrarSenhas = Object.fromEntries(novas.map(({ l }) => [l.id, true]));
+  toast('Logins gerados', 'Agora envie para cada loja pelo botão WhatsApp', 'success');
+  renderAcessos();
+}
+
 function abrirEditarAcesso(lojaId){
   const l = state.lojas.find(x => x.id === lojaId);
   if (!l) return;
@@ -8150,7 +8354,10 @@ function abrirEditarAcesso(lojaId){
       <label class="fld-label">ID de acesso</label>
       <input type="text" id="acIdNovo" class="fld" value="${escapeHtml(l.acessoId||'')}" />
       <label class="fld-label" style="margin-top:12px">Senha</label>
-      <input type="text" id="acSenhaNova" class="fld mono" value="${escapeHtml(l.senha||'')}" />
+      <div style="display:flex;gap:8px">
+        <input type="text" id="acSenhaNova" class="fld mono" style="flex:1;min-width:0" value="${escapeHtml(l.senha||'')}" />
+        <button type="button" class="btn" onclick="document.getElementById('acSenhaNova').value=gerarSenhaLoja(state.lojas.find(x=>x.id==='${l.id}'))" title="Gerar senha nova"><i data-lucide="refresh-cw"></i>Gerar</button>
+      </div>
       <div style="margin-top:8px;font-size:11.5px;color:var(--ink-300)">A senha pode conter letras, números e símbolos.</div>
     `,
     actions:`
@@ -8188,8 +8395,8 @@ async function salvarEditarAcesso(lojaId){
 async function resetarSenhaLoja(lojaId){
   const l = state.lojas.find(x => x.id === lojaId);
   if (!l) return;
-  if (!confirm(`Resetar a senha de ${l.nome} para o padrão "Sgroup@2026#"?`)) return;
-  l.senha = 'Sgroup@2026#';
+  if (!confirm(`Resetar a senha de ${l.nome} para o padrão "${SENHA_PADRAO_LOJA}"?`)) return;
+  l.senha = SENHA_PADRAO_LOJA;
   if (Cloud.ok()) await Cloud.atualizarSenhaLoja(lojaId, l.senha);
   await Storage.set('solys:lojas', state.lojas);
   await pushLog('loja-acesso', `Senha de ${l.nome} resetada ao padrão`);

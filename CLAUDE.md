@@ -28,5 +28,7 @@ Cheque sempre:
 
 Se a mudança for "grande" ou puder pesar, **avise o usuário e proponha a alternativa leve**.
 
-## Senhas padrão (1º acesso)
-- Lojas: `Sgroup@2026#`  ·  Diretoria: `Solys@2027#k`
+## Login
+- E-mail fictício derivado do código da loja: `<codigo sem hífen>@solyscompras.com` (não é gravado no banco)
+- Diretoria: `diretoria@solyscompras.com`
+- Cada loja tem senha própria (tela **Acessos**). Senha padrão de reset das lojas: `Sgroup@2026#` · Diretoria: `Solys@2027#k`

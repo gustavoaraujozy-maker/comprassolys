@@ -28,8 +28,10 @@ A URL final será `https://solyscompras.vercel.app`.
 
 ## Credenciais
 
-- **Senha padrão das lojas:** `Sgroup@2026#` (na primeira entrada cada loja cadastra nome + endereço + nova senha)
-- **Senha da Diretoria:** `Solys@2027#k`
+- **Login por e-mail fictício** (só identifica a conta, não recebe mensagens): `<codigo-da-loja>@solyscompras.com`
+  — ex.: `bezerra@solyscompras.com`, `casadonakarol@solyscompras.com`
+- **Diretoria:** `diretoria@solyscompras.com` + senha da gestão
+- **Senhas das lojas:** individuais — a Diretoria vê, gera e envia em **Acessos** (botões *Gerar logins*, *WhatsApp*, *Copiar*)
 
 ## Estrutura
 
